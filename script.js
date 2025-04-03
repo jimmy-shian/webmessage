@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadMessages();
     setupEmojiPicker();
-    window.messageInterval = setInterval(loadMessages, 500); // 每0.5秒刷新一次消息
+    window.messageInterval = setInterval(loadMessages, 2000); // 每0.5秒刷新一次消息
     window.announcementInterval = setInterval(loadAnnouncement, 10000); // 每10秒刷新一次公告
 });
 
