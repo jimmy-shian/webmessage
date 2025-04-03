@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天應用</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-light">
+    <div class="container">
+        <!-- 頂部區域 -->
+        <header>
+            <div class="user-info">
+                <span id="user-name">User#0000</span>
+            </div>
+            <div class="marquee-container">
+                <div class="marquee" id="announcement">歡迎使用聊天應用！</div>
+            </div>
+            <div class="theme-selector">
+                <div class="theme-dropdown">
+                    <button id="theme-toggle" class="theme-btn"><i class="fas fa-palette"></i></button>
+                    <div id="theme-menu" class="theme-menu hidden">
+                        <button id="theme-light" class="theme-option active"><i class="fas fa-sun"></i> 淺色</button>
+                        <button id="theme-gray" class="theme-option"><i class="fas fa-cloud"></i> 灰色</button>
+                        <button id="theme-dark" class="theme-option"><i class="fas fa-moon"></i> 深色</button>
+                    </div>
+                </div>
+                <div class="font-size-dropdown">
+                    <button id="font-size-toggle" class="theme-btn"><i class="fas fa-text-height"></i></button>
+                    <div id="font-size-menu" class="font-size-menu hidden">
+                        <button id="font-size-small" class="font-size-option"><i class="fas fa-font"></i> 小</button>
+                        <button id="font-size-medium" class="font-size-option active"><i class="fas fa-font"></i> 中</button>
+                        <button id="font-size-large" class="font-size-option"><i class="fas fa-font"></i> 大</button>
+                    </div>
+                </div>
+                <button id="admin-login" class="admin-btn"><i class="fas fa-user-shield"></i></button>
+            </div>
+        </header>
+
+        <!-- 主內容區域 -->
+        <main>
+            <!-- 左側頻道列表 -->
+            <div class="channels">
+                <div class="channels-header">
+                    <h2>頻道</h2>
+                    <button id="add-channel" class="admin-only hidden"><i class="fas fa-plus"></i></button>
+                </div>
+                <ul id="channel-list">
+                    <li class="channel active" data-channel="channel1">頻道 1</li>
+                    <li class="channel" data-channel="channel2">頻道 2</li>
+                </ul>
+            </div>
+
+            <!-- 右側聊天區域 -->
+            <div class="chat-area">
+                <div id="messages" class="messages"></div>
+                <div class="message-input-container">
+                    <input type="text" id="message-input" placeholder="輸入訊息..." autocomplete="off">
+                    <div class="emoji-picker-toggle">
+                        <button id="emoji-button"><i class="far fa-smile"></i></button>
+                        <div id="emoji-picker" class="emoji-picker hidden">
+                            <!-- 表情符號分類標籤和內容將通過JavaScript動態添加 -->
+                            <!-- 結構將包含emoji-tabs和emoji-container -->
+                        </div>
+                    </div>
+                    <button id="send-button"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 管理員登入模態框 -->
+    <div id="admin-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>管理員登入</h2>
+            <form id="admin-form">
+                <div class="form-group">
+                    <label for="admin-username">用戶名</label>
+                    <input type="text" id="admin-username" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">密碼</label>
+                    <input type="password" id="admin-password" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-uniquenum">唯一碼</label>
+                    <input type="password" id="admin-uniquenum" value="1" required>
+                </div>
+                <button type="submit">登入</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 編輯頻道模態框 -->
+    <div id="channel-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="channel-modal-title">添加頻道</h2>
+            <form id="channel-form">
+                <div class="form-group">
+                    <label for="channel-name">頻道名稱</label>
+                    <input type="text" id="channel-name" required>
+                </div>
+                <input type="hidden" id="channel-id">
+                <button type="submit">儲存</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 編輯公告模態框 -->
+    <div id="announcement-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>編輯公告</h2>
+            <form id="announcement-form">
+                <div class="form-group">
+                    <label for="announcement-text">公告內容</label>
+                    <textarea id="announcement-text" required></textarea>
+                </div>
+                <button type="submit">儲存</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/emoji-toolkit@7.0.0/lib/js/joypixels.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

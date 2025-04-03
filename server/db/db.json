@@ -1,0 +1,53 @@
+{
+  "channel1_message": [
+    {
+      "sender": "User#9201",
+      "content": "sads",
+      "timestamp": "2025-04-03T14:41:53.452Z"
+    },
+    {
+      "sender": "User#9201",
+      "content": "qdqwd",
+      "timestamp": "2025-04-03T14:41:59.932Z"
+    }
+  ],
+  "channel2_message": [
+    {
+      "sender": "User#5705",
+      "content": "😊🙂",
+      "timestamp": "2025-04-03T14:44:06.420Z"
+    }
+  ],
+  "admin": [
+    {
+      "account": "admin",
+      "password": "password",
+      "uniquenum": "123456"
+    },
+    {
+      "account": "1",
+      "password": "1",
+      "uniquenum": "1"
+    }
+  ],
+  "channels": [
+    {
+      "id": "channel1",
+      "name": "qup6"
+    },
+    {
+      "id": "channel2",
+      "name": "頻道 2"
+    },
+    {
+      "id": "channel3",
+      "name": "qweqw"
+    }
+  ],
+  "placard": [
+    {
+      "announcement": "123456 \t 11234"
+    }
+  ],
+  "channel3_message": []
+}
