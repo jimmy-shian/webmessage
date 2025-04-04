@@ -9,6 +9,36 @@
       "sender": "User#9201",
       "content": "qdqwd",
       "timestamp": "2025-04-03T14:41:59.932Z"
+    },
+    {
+      "sender": "User#1282",
+      "content": "🥰🤗🤗🥰😊😘",
+      "timestamp": "2025-04-04T04:56:17.870Z"
+    },
+    {
+      "sender": "User#1282",
+      "content": "🤗",
+      "timestamp": "2025-04-04T04:56:51.328Z"
+    },
+    {
+      "sender": "User#1282",
+      "content": "🙂",
+      "timestamp": "2025-04-04T05:15:34.181Z"
+    },
+    {
+      "sender": "User#7695",
+      "content": "🤗",
+      "timestamp": "2025-04-04T05:15:47.816Z"
+    },
+    {
+      "sender": "User#1282",
+      "content": "🤗😊",
+      "timestamp": "2025-04-04T05:16:32.503Z"
+    },
+    {
+      "sender": "User#1282",
+      "content": "...",
+      "timestamp": "2025-04-04T05:17:03.520Z"
     }
   ],
   "channel2_message": [
@@ -49,5 +79,7 @@
       "announcement": "123456 \t 11234"
     }
   ],
-  "channel3_message": []
+  "channel3_message": [],
+  "active_users": [],
+  "user_heartbeats": {}
 }

@@ -116,6 +116,12 @@ header {
     align-items: center;
 }
 
+/* 管理者模式下的公告容器樣式 */
+.marquee-container.admin-mode{
+    border: solid;
+    padding: inherit;
+}
+
 .edit-announcement-btn {
     position: absolute;
     right: 10px;
@@ -140,7 +146,7 @@ header {
 }
 
 @keyframes marquee {
-    0% { transform: translateX(100%); }
+    0% { transform: translateX(150%); }
     100% { transform: translateX(-100%); }
 }
 
@@ -293,12 +299,22 @@ main {
     font-size: 16px;
 }
 
-#add-channel {
+#add-channel, .channel-toggle {
     background: none;
     border: none;
     cursor: pointer;
     color: var(--text);
     font-size: 14px;
+}
+
+.channel-toggle {
+    display: none;
+    margin-left: auto;
+    transition: transform 0.3s ease;
+}
+
+.channel-toggle.collapsed i {
+    transform: rotate(-90deg);
 }
 
 #channel-list {
@@ -381,10 +397,15 @@ main {
 
 .message.my-message {
     margin-left: auto;
+    text-align: right;
 }
 
 .message.my-message .message-content {
     background-color: var(--my-message);
+}
+
+.message.my-message .message-sender {
+    text-align: right;
 }
 
 .message-input-container {
@@ -411,6 +432,12 @@ main {
     color: var(--text);
     font-size: 18px;
     padding: 0 15px;
+    position: relative;
+}
+
+#send-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* 表情符號選擇器 */
@@ -696,6 +723,24 @@ button[type="submit"]:hover {
     background-color: #45a049;
 }
 
+/* 禁用按鈕樣式 */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    position: relative;
+}
+
+button:disabled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: inherit;
+}
+
 /* 輔助類 */
 .hidden {
     display: none !important;
@@ -723,10 +768,37 @@ button[type="submit"]:hover {
     
     .channels {
         flex: 0 0 auto;
-        max-height: 150px;
         width: 100%;
         border-right: none;
         border-bottom: 1px solid var(--border);
+        transition: max-height 0.3s ease;
+    }
+    
+    .channels #channel-list {
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        max-height: 1000px;
+        opacity: 1;
+        overflow: hidden;
+    }
+    
+    .channels.collapsed #channel-list {
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+    }
+    
+    /* 添加展開動畫 */
+    #toggle-channels {
+        transition: transform 0.3s ease;
+    }
+    
+    #toggle-channels.collapsed {
+        transform: rotate(-90deg);
+    }
+    
+    .channel-toggle {
+        display: block;
     }
     
     header {
@@ -742,5 +814,15 @@ button[type="submit"]:hover {
     .marquee-container {
         flex: 1 0 100%;
         margin: 0 0 10px 0;
+    }
+    
+    /* 調整手機模式下的主題和字體大小選單位置 */
+    .theme-menu, .font-size-menu {
+        left: 0;
+    }
+    
+    /* 調整消息輸入框，避免被導航欄擋住 */
+    .message-input-container {
+        padding-bottom: 80px;
     }
 }

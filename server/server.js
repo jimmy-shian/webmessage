@@ -27,7 +27,9 @@ db.defaults({
     { id: 'channel1', name: '頻道 1' },
     { id: 'channel2', name: '頻道 2' }
   ],
-  placard: [{ announcement: '歡迎使用聊天應用！' }]
+  placard: [{ announcement: '歡迎使用聊天應用！' }],
+  active_users: [],  // 添加活躍用戶ID列表
+  user_heartbeats: {}  // 添加用戶心跳時間記錄
 }).write();
 
 // 檢查並初始化管理員賬號
@@ -43,6 +45,8 @@ if (db.get('admin').size().value() === 0) {
 const adminSessions = {};
 // 管理員會話超時時間（30分鐘，單位：毫秒）
 const ADMIN_SESSION_TIMEOUT = 30 * 60 * 1000;
+// 用戶心跳超時時間（5分鐘，單位：毫秒）
+const USER_HEARTBEAT_TIMEOUT = 5 * 60 * 1000;
 
 // 創建Express應用
 const app = express();
@@ -83,6 +87,8 @@ app.get('/', (req, res) => {
         return getAnnouncement(req, res);
       case 'getChannels':
         return getChannels(req, res);
+      case 'checkUserId':
+        return checkUserId(req, res);
       default:
         return res.json({
           success: false,
@@ -132,6 +138,12 @@ app.post('/', (req, res) => {
         return deleteChannel(req, res);
       case 'updateAnnouncement':
         return updateAnnouncement(req, res);
+      case 'registerUserId':
+        return registerUserId(req, res);
+      case 'releaseUserId':
+        return releaseUserId(req, res);
+      case 'userHeartbeat':
+        return handleUserHeartbeat(req, res);
       default:
         return res.json({
           success: false,
@@ -491,9 +503,203 @@ function checkAdminSession(req, res) {
   });
 }
 
+// 檢查用戶ID是否存在
+function checkUserId(req, res) {
+  try {
+    const userId = req.query.userId;
+    
+    if (!userId) {
+      return res.json({
+        success: false,
+        error: '用戶ID不能為空'
+      });
+    }
+    
+    const activeUsers = db.get('active_users').value();
+    
+    // 檢查ID是否已經存在
+    const exists = activeUsers.includes(userId);
+    
+    return res.json({
+      success: true,
+      exists: exists
+    });
+  } catch (error) {
+    return res.json({
+      success: false,
+      error: error.toString()
+    });
+  }
+}
+
+// 註冊用戶ID
+function registerUserId(req, res) {
+  try {
+    let userData;
+    try {
+      userData = JSON.parse(req.body.data);
+    } catch (e) {
+      // 如果已經是對象，不需要解析
+      userData = req.body.data;
+    }
+    
+    const userId = userData.userId;
+    const timestamp = userData.timestamp || new Date().toISOString();
+    
+    if (!userId) {
+      return res.json({
+        success: false,
+        error: '用戶ID不能為空'
+      });
+    }
+    
+    const activeUsers = db.get('active_users');
+    
+    // 檢查ID是否已經存在
+    if (activeUsers.value().includes(userId)) {
+      return res.json({
+        success: false,
+        error: '用戶ID已存在',
+        exists: true
+      });
+    }
+    
+    // 添加新用戶ID
+    activeUsers.push(userId).write();
+    
+    // 記錄用戶心跳時間
+    const userHeartbeats = db.get('user_heartbeats').value() || {};
+    userHeartbeats[userId] = timestamp;
+    db.set('user_heartbeats', userHeartbeats).write();
+    
+    return res.json({
+      success: true,
+      exists: false
+    });
+  } catch (error) {
+    return res.json({
+      success: false,
+      error: error.toString()
+    });
+  }
+}
+
+// 釋放用戶ID
+function releaseUserId(req, res) {
+  try {
+    let userData;
+    try {
+      userData = JSON.parse(req.body.data);
+    } catch (e) {
+      // 如果已經是對象，不需要解析
+      userData = req.body.data;
+    }
+    
+    const userId = userData.userId;
+    
+    if (!userId) {
+      return res.json({
+        success: false,
+        error: '用戶ID不能為空'
+      });
+    }
+    
+    const activeUsers = db.get('active_users');
+    
+    // 從活躍用戶列表中移除
+    activeUsers.remove(id => id === userId).write();
+    
+    return res.json({
+      success: true
+    });
+  } catch (error) {
+    return res.json({
+      success: false,
+      error: error.toString()
+    });
+  }
+}
+
+// 定期清理過期用戶ID
+function cleanupExpiredUsers() {
+  try {
+    const userHeartbeats = db.get('user_heartbeats').value() || {};
+    const activeUsers = db.get('active_users');
+    const currentTime = new Date().getTime();
+    let cleaned = 0;
+    
+    // 檢查每個活躍用戶的最後心跳時間
+    activeUsers.value().forEach(userId => {
+      const lastHeartbeat = userHeartbeats[userId] ? new Date(userHeartbeats[userId]).getTime() : 0;
+      
+      // 如果用戶超過5分鐘沒有心跳，則移除
+      if (currentTime - lastHeartbeat > USER_HEARTBEAT_TIMEOUT) {
+        activeUsers.remove(id => id === userId).write();
+        delete userHeartbeats[userId];
+        cleaned++;
+      }
+    });
+    
+    // 更新心跳記錄
+    db.set('user_heartbeats', userHeartbeats).write();
+    
+    if (cleaned > 0) {
+      console.log(`已清理 ${cleaned} 個過期用戶ID`);
+    }
+  } catch (error) {
+    console.error('清理過期用戶ID錯誤:', error);
+  }
+}
+
+// 處理用戶心跳
+function handleUserHeartbeat(req, res) {
+  try {
+    let userData;
+    try {
+      userData = JSON.parse(req.body.data);
+    } catch (e) {
+      // 如果已經是對象，不需要解析
+      userData = req.body.data;
+    }
+    
+    const userId = userData.userId;
+    const timestamp = userData.timestamp || new Date().toISOString();
+    
+    if (!userId) {
+      return res.json({
+        success: false,
+        error: '用戶ID不能為空'
+      });
+    }
+    
+    // 更新用戶心跳時間
+    const userHeartbeats = db.get('user_heartbeats').value() || {};
+    userHeartbeats[userId] = timestamp;
+    db.set('user_heartbeats', userHeartbeats).write();
+    
+    // 確保用戶在活躍列表中
+    const activeUsers = db.get('active_users');
+    if (!activeUsers.value().includes(userId)) {
+      activeUsers.push(userId).write();
+    }
+    
+    return res.json({
+      success: true
+    });
+  } catch (error) {
+    return res.json({
+      success: false,
+      error: error.toString()
+    });
+  }
+}
+
 // 啟動服務器
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`服務器運行在 http://localhost:${PORT}`);
   console.log('請將前端API_URL更新為此地址');
+  
+  // 設置定期清理過期用戶ID的任務（每分鐘檢查一次）
+  setInterval(cleanupExpiredUsers, 60 * 1000);
 });

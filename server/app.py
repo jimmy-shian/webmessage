@@ -14,6 +14,8 @@ CORS(app)  # 啟用跨域資源共享
 admin_sessions = {}
 # 管理員會話超時時間（30分鐘，單位：秒）
 ADMIN_SESSION_TIMEOUT = 30 * 60
+# 用戶心跳超時時間（5分鐘，單位：秒）
+USER_HEARTBEAT_TIMEOUT = 5 * 60
 
 # 確保數據目錄存在
 db_dir = os.path.join(os.path.dirname(__file__), 'db')
@@ -37,7 +39,9 @@ def init_db():
                 {"id": "channel1", "name": "頻道 1"},
                 {"id": "channel2", "name": "頻道 2"}
             ],
-            "placard": [{"announcement": "歡迎使用聊天應用！"}]
+            "placard": [{"announcement": "歡迎使用聊天應用！"}],
+            "active_users": [],  # 添加活躍用戶ID列表
+            "user_heartbeats": {}  # 添加用戶心跳時間記錄
         }
         with open(db_file, 'w', encoding='utf-8') as f:
             json.dump(default_data, f, ensure_ascii=False, indent=2)
@@ -107,6 +111,8 @@ def handle_get_request():
             return get_announcement()
         elif action == 'getChannels':
             return get_channels()
+        elif action == 'checkUserId':
+            return check_user_id(request.args.get('userId'))
         else:
             return jsonify({
                 'success': False,
@@ -159,6 +165,12 @@ def handle_post_request():
             return delete_channel(data)
         elif action == 'updateAnnouncement':
             return update_announcement(data)
+        elif action == 'registerUserId':
+            return register_user_id(data)
+        elif action == 'releaseUserId':
+            return release_user_id(data)
+        elif action == 'userHeartbeat':
+            return handle_user_heartbeat(data)
         else:
             return jsonify({
                 'success': False,
@@ -466,12 +478,200 @@ def check_admin_session(session_id):
         'expiresIn': (admin_sessions[session_id]['expire_time'] - time.time()) * 1000 if is_valid else 0  # 轉換為毫秒
     })
 
+# 檢查用戶ID是否存在
+def check_user_id(user_id):
+    try:
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': '用戶ID不能為空'
+            })
+        
+        db = load_db()
+        active_users = db.get('active_users', [])
+        
+        # 檢查ID是否已經存在
+        exists = user_id in active_users
+        
+        return jsonify({
+            'success': True,
+            'exists': exists
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# 註冊用戶ID
+def register_user_id(data):
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+        
+        user_id = data.get('userId')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': '用戶ID不能為空'
+            })
+        
+        db = load_db()
+        active_users = db.get('active_users', [])
+        
+        # 檢查ID是否已經存在
+        if user_id in active_users:
+            return jsonify({
+                'success': False,
+                'error': '用戶ID已存在',
+                'exists': True
+            })
+        
+        # 添加新用戶ID
+        active_users.append(user_id)
+        db['active_users'] = active_users
+        save_db(db)
+        
+        return jsonify({
+            'success': True,
+            'exists': False
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# 釋放用戶ID
+def release_user_id(data):
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+        
+        user_id = data.get('userId')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': '用戶ID不能為空'
+            })
+        
+        db = load_db()
+        active_users = db.get('active_users', [])
+        
+        # 從活躍用戶列表中移除
+        if user_id in active_users:
+            active_users.remove(user_id)
+            db['active_users'] = active_users
+            save_db(db)
+        
+        return jsonify({
+            'success': True
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# 處理用戶心跳
+def handle_user_heartbeat(data):
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+        
+        user_id = data.get('userId')
+        timestamp = data.get('timestamp', datetime.now().isoformat())
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': '用戶ID不能為空'
+            })
+        
+        db = load_db()
+        
+        # 更新用戶心跳時間
+        user_heartbeats = db.get('user_heartbeats', {})
+        user_heartbeats[user_id] = timestamp
+        db['user_heartbeats'] = user_heartbeats
+        
+        # 確保用戶在活躍列表中
+        active_users = db.get('active_users', [])
+        if user_id not in active_users:
+            active_users.append(user_id)
+            db['active_users'] = active_users
+        
+        save_db(db)
+        
+        return jsonify({
+            'success': True
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# 清理過期用戶ID
+def cleanup_expired_users():
+    try:
+        db = load_db()
+        user_heartbeats = db.get('user_heartbeats', {})
+        active_users = db.get('active_users', [])
+        current_time = time.time()
+        cleaned = 0
+        
+        # 創建一個新的活躍用戶列表
+        new_active_users = []
+        
+        for user_id in active_users:
+            # 獲取最後心跳時間，如果沒有則設為0
+            last_heartbeat = 0
+            if user_id in user_heartbeats:
+                try:
+                    last_heartbeat = time.mktime(datetime.fromisoformat(user_heartbeats[user_id].replace('Z', '+00:00')).timetuple())
+                except (ValueError, TypeError):
+                    # 如果日期格式不正確，使用當前時間
+                    last_heartbeat = 0
+            
+            # 如果用戶超過5分鐘沒有心跳，則移除
+            if current_time - last_heartbeat <= USER_HEARTBEAT_TIMEOUT:
+                new_active_users.append(user_id)
+            else:
+                if user_id in user_heartbeats:
+                    del user_heartbeats[user_id]
+                cleaned += 1
+        
+        # 更新活躍用戶列表和心跳記錄
+        db['active_users'] = new_active_users
+        db['user_heartbeats'] = user_heartbeats
+        save_db(db)
+        
+        if cleaned > 0:
+            print(f'已清理 {cleaned} 個過期用戶ID')
+            
+    except Exception as e:
+        print(f'清理過期用戶ID錯誤: {e}')
+
 # 初始化數據庫
 init_db()
 
 if __name__ == '__main__':
-    # 啟動服務器
-    port = int(os.environ.get('PORT', 5000))
-    print(f"服務器運行在 http://localhost:{port}")
+    # 啟動服務器，設定端口為 24068
+    port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
+    print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
     print('請將前端API_URL更新為此地址')
+    
+    # 設置定期清理過期用戶ID的任務
+    import threading
+    def cleanup_task():
+        while True:
+            cleanup_expired_users()
+            time.sleep(60)  # 每分鐘檢查一次
+    
+    # 啟動清理線程
+    cleanup_thread = threading.Thread(target=cleanup_task)
+    cleanup_thread.daemon = True  # 設置為守護線程，主程序結束時自動結束
+    cleanup_thread.start()
+    
     app.run(host='0.0.0.0', port=port, debug=True)

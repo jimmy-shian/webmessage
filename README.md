@@ -1,6 +1,6 @@
 # 聊天應用使用說明
 
-這是一個基於HTML、JavaScript和Google Apps Script的簡易聊天應用，支援多頻道聊天、主題切換、表情符號和管理員功能。
+這是一個基於HTML、JavaScript的簡易聊天應用，支援多頻道聊天、主題切換、表情符號和管理員功能。應用提供兩種後端選擇：Google Apps Script或本地服務器(Node.js/Python)。
 
 ## 功能特點
 
@@ -13,7 +13,23 @@
 - 管理員特權功能（編輯頻道、發布公告）
 - 訊息發送頻率限制（3秒一條）
 
-## 設定步驟
+## 後端選擇
+
+本應用提供兩種後端實現方式，您可以根據需求選擇：
+
+### 1. Google Apps Script 版本
+- 優點：設置簡單，無需本地服務器
+- 缺點：有每日配額限制，高流量時可能服務中斷
+- 適合：小型團隊或個人使用，快速部署
+
+### 2. 本地服務器版本
+- 優點：無使用限制，更好的性能，完全控制，易於擴展
+- 缺點：需要本地服務器或雲端主機
+- 提供兩種實現：
+  - **Node.js版本**：適合有JavaScript經驗的開發者
+  - **Python版本**：適合有Python經驗的開發者
+
+## 設定步驟 (Google Apps Script 版本)
 
 ### 1. 建立Google Sheets
 
@@ -41,14 +57,70 @@
 2. 將所有 `YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL` 替換為你在上一步複製的URL
 3. 儲存檔案
 
-### 4. 設定管理員帳號
+## 設定步驟 (本地服務器版本)
+
+### 1. 安裝依賴
+
+**Node.js版本：**
+```
+cd server
+npm install
+```
+
+**Python版本：**
+```
+cd server
+pip install -r requirements.txt
+```
+
+### 2. 啟動服務器
+
+**Node.js版本：**
+```
+npm start
+```
+服務器將運行在 http://localhost:3000
+
+**Python版本：**
+```
+python app.py
+```
+服務器將運行在 http://localhost:5000
+
+### 3. 更新前端API_URL
+
+我們提供了一個簡單的腳本來更新前端的API_URL：
+
+```
+node update_api_url.js 1  # 使用Node.js服務器
+```
+或
+```
+node update_api_url.js 2  # 使用Python服務器
+```
+
+您也可以手動修改 `script.js` 文件中的API_URL：
+
+```javascript
+// 將此行
+const API_URL = 'https://script.google.com/macros/s/AKfycbyRkTVHepbhkMbyf-t0GMV-lIhes7BwgDJwBf2AYqzL_98u-jjRe90K9Z35M6FC-i3mmg/exec';
+
+// 修改為
+const API_URL = 'http://localhost:3000';  // Node.js版本
+// 或
+const API_URL = 'http://localhost:5000';  // Python版本
+```
+
+## 設定管理員帳號
 
 預設的管理員帳號為：
 - 使用者名稱：admin
 - 密碼：password
 - 唯一碼：123456
 
-你可以直接在Google Sheets的「admin」工作表中修改或新增管理員帳號。
+**Google Apps Script版本**：你可以直接在Google Sheets的「admin」工作表中修改或新增管理員帳號。
+
+**本地服務器版本**：你可以修改 `server/db/db.json` 文件中的管理員信息。
 
 ## 使用說明
 
@@ -75,12 +147,60 @@
 - 使用者ID儲存在瀏覽器的本地儲存中，清除瀏覽器資料會重置ID
 - 管理員狀態也儲存在本地儲存中，清除瀏覽器資料會登出管理員狀態
 
+## 故障排除
+
+### 常見問題
+
+1. **無法連接到服務器**
+   - 確保服務器正在運行
+   - 檢查前端API_URL是否正確
+   - 確保沒有防火牆阻止連接
+
+2. **管理員登錄失敗**
+   - 確認使用默認管理員帳戶或檢查管理員信息
+
+3. **消息未顯示**
+   - 檢查瀏覽器控制台是否有錯誤
+   - 確認服務器日誌中是否有錯誤信息
+
+## 進階配置
+
+### 自定義端口
+
+**Node.js版本：**
+```
+PORT=8080 npm start
+```
+
+**Python版本：**
+```
+PORT=8080 python app.py
+```
+
+### 部署到公共服務器
+
+如果您想讓其他人通過互聯網訪問您的聊天應用，您需要將服務器部署到公共可訪問的服務器上，並確保更新前端API_URL指向該公共URL。
+
 ## 技術說明
 
 - 前端：HTML, CSS, JavaScript
-- 後端：Google Apps Script
-- 資料儲存：Google Sheets
+- 後端選項：
+  - Google Apps Script + Google Sheets
+  - Node.js + Express + JSON文件
+  - Python + Flask + JSON文件
 - 表情符號：使用emoji-toolkit庫
+
+## 功能對比
+
+| 功能 | Google Apps Script | 本地服務器 |
+|------|-------------------|------------|
+| 消息發送/接收 | ✅ | ✅ |
+| 頻道管理 | ✅ | ✅ |
+| 管理員功能 | ✅ | ✅ |
+| 公告管理 | ✅ | ✅ |
+| 數據存儲 | Google Sheets | 本地JSON文件 |
+| 使用限制 | 有每日配額 | 無限制 |
+| 部署難度 | 簡單 | 需要本地服務器 |
 
 ## 自訂開發
 
@@ -89,4 +209,6 @@
 - `index.html`：修改頁面結構
 - `style.css`：修改介面樣式和主題
 - `script.js`：修改前端邏輯
-- `gas_code.js`：修改後端邏輯和資料處理
+- `gas_code.js`：修改Google Apps Script後端邏輯
+- `server.js`：修改Node.js後端邏輯
+- `app.py`：修改Python後端邏輯

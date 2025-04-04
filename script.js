@@ -1,5 +1,6 @@
 // 全局变量
 const API_URL = "http://ouo.freeserver.tw:24068";
+// const API_URL = "http://127.0.0.1:5000";
 let currentUser = null;
 let currentChannel = 'channel1';
 let isAdmin;
@@ -182,11 +183,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // 創建懸浮通知容器
     createNotificationContainer();
 
-    loadMessages();
     setupEmojiPicker();
-    window.messageInterval = setInterval(loadMessages, 5000); // 每0.5秒刷新一次消息
+    setupChannelToggle();
+    
+    loadMessages();
+    window.messageInterval = setInterval(loadMessages, 5000); // 每5秒刷新一次消息
     window.announcementInterval = setInterval(loadAnnouncement, 10000); // 每10秒刷新一次公告
+    
+    // 添加用戶活動心跳，每5分鐘發送一次
+    window.heartbeatInterval = setInterval(sendHeartbeat, 5 * 60 * 1000); // 每5分鐘發送一次心跳
 });
+
+// 設置頻道列表收合功能
+function setupChannelToggle() {
+    const toggleButton = document.getElementById('toggle-channels');
+    const channelsContainer = document.querySelector('.channels');
+    
+    // 在手機模式下默認收起頻道列表
+    if (window.innerWidth <= 576) {
+        channelsContainer.classList.add('collapsed');
+        toggleButton.classList.add('collapsed');
+    }
+    
+    toggleButton.addEventListener('click', () => {
+        channelsContainer.classList.toggle('collapsed');
+        toggleButton.classList.toggle('collapsed');
+    });
+    
+    // 監聽窗口大小變化，在切換到手機模式時自動收起頻道列表
+    window.addEventListener('resize', () => {
+        if (window.innerWidth <= 576) {
+            if (!channelsContainer.classList.contains('collapsed')) {
+                channelsContainer.classList.add('collapsed');
+                toggleButton.classList.add('collapsed');
+            }
+        } else {
+            // 在大屏幕模式下始終展開頻道列表
+            channelsContainer.classList.remove('collapsed');
+            toggleButton.classList.remove('collapsed');
+        }
+    });
+}
 
 // 創建懸浮通知容器
 function createNotificationContainer() {
@@ -291,10 +328,10 @@ function initUser() {
     if (!userId) {
         // 生成隨機4位數字作為用戶ID
         userId = Math.floor(1000 + Math.random() * 9000).toString();
-        localStorage.setItem('userId', userId);
     }
-    currentUser = `User#${userId}`;
-    document.getElementById('user-name').textContent = currentUser;
+    
+    // 檢查用戶ID是否已存在於服務器
+    checkAndRegisterUserId(userId);
     
     // 檢查是否有管理員會話ID
     adminSessionId = localStorage.getItem('adminSessionId');
@@ -305,6 +342,115 @@ function initUser() {
         isAdmin = false;
         updateAdminUI();
     }
+    
+    // 添加頁面卸載事件，釋放用戶ID
+    window.addEventListener('beforeunload', releaseUserId);
+}
+
+// 檢查並註冊用戶ID
+function checkAndRegisterUserId(userId) {
+    $.get(API_URL, {
+        action: 'checkUserId',
+        userId: userId
+    })
+    .done(function(data) {
+        if (data.success) {
+            if (data.exists) {
+                // ID已存在，生成新ID
+                const newUserId = Math.floor(1000 + Math.random() * 9000).toString();
+                checkAndRegisterUserId(newUserId);
+            } else {
+                // ID不存在，註冊ID
+                registerUserId(userId);
+            }
+        } else {
+            console.error('檢查用戶ID失敗:', data.error);
+            // 出錯時使用本地ID
+            setCurrentUser(userId);
+        }
+    })
+    .fail(function(error) {
+        console.error('檢查用戶ID錯誤:', error);
+        // 出錯時使用本地ID
+        setCurrentUser(userId);
+    });
+}
+
+// 註冊用戶ID
+function registerUserId(userId) {
+    $.post(API_URL, {
+        action: 'registerUserId',
+        data: JSON.stringify({
+            userId: userId,
+            timestamp: new Date().toISOString() // 添加時間戳作為初始心跳
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            // 註冊成功，設置當前用戶
+            localStorage.setItem('userId', userId);
+            setCurrentUser(userId);
+            // 立即發送第一次心跳
+            sendHeartbeat();
+        } else if (data.exists) {
+            // ID已存在，生成新ID
+            const newUserId = Math.floor(1000 + Math.random() * 9000).toString();
+            checkAndRegisterUserId(newUserId);
+        } else {
+            console.error('註冊用戶ID失敗:', data.error);
+            // 出錯時使用本地ID
+            setCurrentUser(userId);
+        }
+    })
+    .fail(function(error) {
+        console.error('註冊用戶ID錯誤:', error);
+        // 出錯時使用本地ID
+        setCurrentUser(userId);
+    });
+}
+
+// 釋放用戶ID
+function releaseUserId() {
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+        // 使用同步請求確保在頁面關閉前完成
+        navigator.sendBeacon(API_URL, new URLSearchParams({
+            action: 'releaseUserId',
+            data: JSON.stringify({
+                userId: userId
+            })
+        }));
+    }
+}
+
+// 發送用戶活動心跳
+function sendHeartbeat() {
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+        $.post(API_URL, {
+            action: 'userHeartbeat',
+            data: JSON.stringify({
+                userId: userId,
+                timestamp: new Date().toISOString()
+            })
+        })
+        .done(function(data) {
+            if (data.success) {
+                console.log('心跳發送成功');
+            } else {
+                console.error('心跳發送失敗:', data.error);
+            }
+        })
+        .fail(function(error) {
+            console.error('心跳發送錯誤:', error);
+        });
+    }
+}
+
+// 設置當前用戶
+function setCurrentUser(userId) {
+    currentUser = `User#${userId}`;
+    document.getElementById('user-name').textContent = currentUser;
 }
 
 // 設置事件監聽器
@@ -655,6 +801,9 @@ function sendMessageToGAS(message, sendButton) {
 
 
 // 從Google Apps Script加載消息
+let lastMessageCount = 0;
+let lastMessageTimestamp = '';
+
 function loadMessages() {
     // 使用jQuery的$.get方法獲取消息
     $.get(API_URL, {
@@ -665,7 +814,21 @@ function loadMessages() {
         // 重置重試計數器
         messageRetryCount = 0;
         if (data.success) {
-            displayMessages(data.messages);
+            // 檢查是否有新消息
+            const messages = data.messages || [];
+            const latestTimestamp = messages.length > 0 ? messages[messages.length - 1].timestamp : '';
+            if(currentUser){
+                displayMessages(messages);
+            }else{
+                // 使用者未確定，顯示載入中
+                switchChannel(currentChannel);
+            }
+            // 只有在消息數量變化或最新消息時間戳變化時才更新顯示
+            // if (messages.length !== lastMessageCount || latestTimestamp !== lastMessageTimestamp) {
+            //     displayMessages(messages);
+            //     lastMessageCount = messages.length;
+            //     lastMessageTimestamp = latestTimestamp;
+            // }
         } else {
             console.error('加載消息失敗:', data.error);
         }
@@ -903,21 +1066,25 @@ function updateChannel(channelId, channelName, submitButton) {
 
 // 顯示編輯公告模態框
 function showAnnouncementModal() {
+    // 先顯示模態框和載入中提示
+    const announcementTextarea = document.getElementById('announcement-text');
+    announcementTextarea.value = '載入中...';
+    document.getElementById('announcement-modal').classList.remove('hidden');
+    
     // 使用jQuery的$.get方法獲取當前公告
     $.get(API_URL, {
         action: 'getAnnouncement'
     })
     .done(function(data) {
         if (data.success) {
-            document.getElementById('announcement-text').value = data.announcement || '';
-            document.getElementById('announcement-modal').classList.remove('hidden');
+            announcementTextarea.value = data.announcement || '';
         }
     })
     .fail(function(error) {
         console.error('獲取公告錯誤:', error);
-        // 如果無法獲取，仍然顯示模態框，但輸入框為空
-        document.getElementById('announcement-text').value = '';
-        document.getElementById('announcement-modal').classList.remove('hidden');
+        // 如果無法獲取，顯示錯誤提示
+        announcementTextarea.value = '';
+        showNotification('獲取公告失敗，請重新嘗試', 'error');
     });
 }
 
@@ -926,7 +1093,10 @@ function handleAnnouncementForm(e) {
     e.preventDefault();
     
     const submitButton = document.querySelector('#announcement-form button[type="submit"]');
-    const announcementText = document.getElementById('announcement-text').value;
+    let announcementText = document.getElementById('announcement-text').value;
+    
+    // 處理公告文字：將多行換行改為一行，將單一換行轉為\t
+    announcementText = announcementText.replace(/\n\s*\n/g, ' ').replace(/\n/g, '\t');
     
     // 禁用按鈕並顯示加載狀態
     submitButton.disabled = true;
@@ -968,7 +1138,7 @@ function displayMessages(messages) {
         messageElement.classList.add('message');
         
         // 檢查是否是當前用戶發送的消息
-        if (msg.sender === currentUser) {
+        if (msg.sender == currentUser) {
             messageElement.classList.add('my-message');
         }
         
@@ -986,7 +1156,7 @@ function displayMessages(messages) {
     });
     
     // 滾動到最新消息
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 // 顯示模擬消息（僅用於開發測試）
@@ -1010,6 +1180,7 @@ function showAdminModal() {
 function updateAdminUI() {
     const adminElements = document.querySelectorAll('.admin-only');
     const adminLoginBtn = document.getElementById('admin-login');
+    const announcementContainer = document.querySelector('.marquee-container');
     
     if (isAdmin) {
         // 顯示管理員功能
@@ -1026,6 +1197,9 @@ function updateAdminUI() {
         
         // 為頻道添加編輯和刪除按鈕
         updateChannelButtons();
+        
+        // 添加管理者模式樣式
+        announcementContainer.classList.add('admin-mode');
     } else {
         // 隱藏管理員功能
         adminElements.forEach(el => el.classList.add('hidden'));
@@ -1037,6 +1211,9 @@ function updateAdminUI() {
         
         // 移除頻道編輯和刪除按鈕
         document.querySelectorAll('.channel-edit, .channel-delete').forEach(btn => btn.remove());
+        
+        // 移除管理者模式樣式
+        announcementContainer.classList.remove('admin-mode');
     }
 }
 

@@ -21,6 +21,8 @@ function doGet(e) {
         return getAnnouncement();
       case 'getChannels':
         return getChannels();
+      case 'checkUserId':
+        return checkUserId(e.parameter.userId);
       default:
         return ContentService.createTextOutput(JSON.stringify({
           success: false,
@@ -91,6 +93,10 @@ function doPost(e) {
         return deleteChannel(data);
       case 'updateAnnouncement':
         return updateAnnouncement(data);
+      case 'registerUserId':
+        return registerUserId(data);
+      case 'releaseUserId':
+        return releaseUserId(data);
       default:
         return ContentService.createTextOutput(JSON.stringify({
           success: false,
@@ -486,6 +492,126 @@ function checkAdminSession(sessionId) {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
+// 檢查用戶ID是否存在
+function checkUserId(userId) {
+  try {
+    if (!userId) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: '用戶ID不能為空'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 獲取或創建活躍用戶工作表
+    const sheet = getOrCreateSheet('active_users');
+    const data = sheet.getDataRange().getValues();
+    
+    // 檢查ID是否已經存在
+    let exists = false;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === userId) {
+        exists = true;
+        break;
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      exists: exists
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 註冊用戶ID
+function registerUserId(data) {
+  try {
+    data = JSON.parse(data);
+    const userId = data.userId;
+    
+    if (!userId) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: '用戶ID不能為空'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 獲取或創建活躍用戶工作表
+    const sheet = getOrCreateSheet('active_users');
+    const existingData = sheet.getDataRange().getValues();
+    
+    // 檢查ID是否已經存在
+    for (let i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] === userId) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: '用戶ID已存在',
+          exists: true
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    // 添加新用戶ID
+    sheet.appendRow([userId]);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      exists: false
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 釋放用戶ID
+function releaseUserId(data) {
+  try {
+    data = JSON.parse(data);
+    const userId = data.userId;
+    
+    if (!userId) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: '用戶ID不能為空'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 獲取活躍用戶工作表
+    const sheet = getOrCreateSheet('active_users');
+    const existingData = sheet.getDataRange().getValues();
+    
+    // 查找用戶ID所在的行
+    let rowIndex = -1;
+    for (let i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] === userId) {
+        rowIndex = i + 1; // +1 因為getRange是從1開始的
+        break;
+      }
+    }
+    
+    // 如果找到了用戶ID，刪除該行
+    if (rowIndex !== -1) {
+      sheet.deleteRow(rowIndex);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // 設置Web應用部署URL
 function getScriptUrl() {
   return ScriptApp.getService().getUrl();
@@ -499,6 +625,7 @@ function initialize() {
   getOrCreateSheet('admin');
   getOrCreateSheet('channels');
   getOrCreateSheet('placard');
+  getOrCreateSheet('active_users'); // 添加活躍用戶工作表
   
   // 如果admin工作表為空，添加一個默認管理員
   const adminSheet = getOrCreateSheet('admin');
