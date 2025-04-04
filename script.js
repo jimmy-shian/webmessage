@@ -13,6 +13,9 @@ let channels = [
 ];
 let isThemeMenuOpen = false;
 
+// 用於取消請求的控制器
+let currentMessageController = null;
+
 // 重試計數器
 let messageRetryCount = 0;
 let announcementRetryCount = 0;
@@ -709,6 +712,12 @@ function setFontSize(size) {
 
 // 切換頻道
 function switchChannel(channelId) {
+    // 取消之前的請求
+    if (currentMessageController) {
+        currentMessageController.abort();
+        currentMessageController = null;
+    }
+    
     currentChannel = channelId;
     document.querySelectorAll('.channel').forEach(channel => {
         if (channel.dataset.channel === channelId) {
@@ -805,35 +814,61 @@ let lastMessageCount = 0;
 let lastMessageTimestamp = '';
 
 function loadMessages() {
-    // 使用jQuery的$.get方法獲取消息
-    $.get(API_URL, {
-        action: 'getMessages',
-        channel: currentChannel
+    // 取消之前的請求（如果存在）
+    if (currentMessageController) {
+        currentMessageController.abort();
+    }
+    
+    // 創建新的AbortController
+    currentMessageController = new AbortController();
+    const signal = currentMessageController.signal;
+    
+    // 保存當前請求的頻道ID，用於檢查請求完成時頻道是否已經改變
+    const requestChannelId = currentChannel;
+    
+    // 使用fetch API代替jQuery的$.get，以支持AbortController
+    fetch(`${API_URL}?action=getMessages&channel=${requestChannelId}`, {
+        method: 'GET',
+        signal: signal
     })
-    .done(function(data) {
+    .then(response => response.json())
+    .then(data => {
+        // 如果在請求完成時頻道已經改變，則忽略此響應
+        if (requestChannelId !== currentChannel) {
+            console.log('忽略舊頻道的響應:', requestChannelId);
+            return;
+        }
+        
         // 重置重試計數器
         messageRetryCount = 0;
+        
         if (data.success) {
             // 檢查是否有新消息
             const messages = data.messages || [];
             const latestTimestamp = messages.length > 0 ? messages[messages.length - 1].timestamp : '';
-            if(currentUser){
+            
+            if (currentUser) {
                 displayMessages(messages);
-            }else{
+            } else {
                 // 使用者未確定，顯示載入中
                 switchChannel(currentChannel);
             }
-            // 只有在消息數量變化或最新消息時間戳變化時才更新顯示
-            // if (messages.length !== lastMessageCount || latestTimestamp !== lastMessageTimestamp) {
-            //     displayMessages(messages);
-            //     lastMessageCount = messages.length;
-            //     lastMessageTimestamp = latestTimestamp;
-            // }
         } else {
             console.error('加載消息失敗:', data.error);
         }
+        
+        // 清理控制器引用
+        if (currentMessageController && currentMessageController.signal.aborted === false) {
+            currentMessageController = null;
+        }
     })
-    .fail(function(error) {
+    .catch(error => {
+        // 如果是取消請求導致的錯誤，則忽略
+        if (error.name === 'AbortError') {
+            console.log('請求已取消');
+            return;
+        }
+        
         console.error('加載消息錯誤:', error);
         messageRetryCount++;
         
@@ -843,9 +878,12 @@ function loadMessages() {
             // 顯示網絡錯誤通知
             showNetworkErrorNotification();
         } else {
-            // 如果無法連接到GAS，顯示模擬數據（僅用於開發測試）
+            // 如果無法連接到服務器，顯示模擬數據（僅用於開發測試）
             displayMockMessages();
         }
+        
+        // 清理控制器引用
+        currentMessageController = null;
     });
 }
 
