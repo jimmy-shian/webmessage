@@ -138,7 +138,7 @@ def handle_post_request():
         session_id = req_data.get('sessionId')
         
         # 需要管理員權限的操作
-        admin_actions = ['addChannel', 'updateChannel', 'updateAnnouncement', 'deleteChannel']
+        admin_actions = ['addChannel', 'updateChannel', 'updateAnnouncement', 'deleteChannel', 'deleteMessage']
         
         # 檢查是否需要管理員權限
         if action in admin_actions and not validate_admin_session(session_id):
@@ -171,6 +171,8 @@ def handle_post_request():
             return release_user_id(data)
         elif action == 'userHeartbeat':
             return handle_user_heartbeat(data)
+        elif action == 'deleteMessage':
+            return delete_message(data, session_id)
         else:
             return jsonify({
                 'success': False,
@@ -196,11 +198,16 @@ def send_message(message_data):
         collection_name = f"{channel}_message"
         db = get_or_create_collection(collection_name)
         
+        # 生成唯一消息ID
+        message_id = str(uuid.uuid4())
+        
         # 添加新消息
         db[collection_name].append({
+            'id': message_id,
             'sender': sender,
             'content': content,
-            'timestamp': timestamp
+            'timestamp': timestamp,
+            'deleted': False
         })
         
         # 保留最新的100條消息
@@ -612,6 +619,66 @@ def handle_user_heartbeat(data):
             'error': str(e)
         })
 
+# 刪除消息（僅管理員可用）
+def delete_message(data, session_id):
+    try:
+        if not validate_admin_session(session_id):
+            return jsonify({
+                'success': False,
+                'error': '需要管理員權限或會話已過期'
+            })
+            
+        if isinstance(data, str):
+            data = json.loads(data)
+        
+        content = data.get('content')
+        sender = data.get('sender')
+        timestamp = data.get('timestamp')
+        channel = data.get('channel')
+        
+        if not all([content, sender, timestamp, channel]):
+            return jsonify({
+                'success': False,
+                'error': '消息內容、發送者、時間戳記和頻道不能為空'
+            })
+        
+        collection_name = f"{channel}_message"
+        db = load_db()
+        
+        # 檢查集合是否存在
+        if collection_name not in db:
+            return jsonify({
+                'success': False,
+                'error': '頻道不存在'
+            })
+        
+        # 查找消息並標記為已刪除
+        message_found = False
+        for message in db[collection_name]:
+            if (message.get('content') == content and
+                message.get('sender') == sender and
+                message.get('timestamp') == timestamp):
+                message['deleted'] = True
+                message_found = True
+                break
+        
+        if not message_found:
+            return jsonify({
+                'success': False,
+                'error': '消息不存在'
+            })
+        
+        save_db(db)
+        
+        return jsonify({
+            'success': True
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 # 清理過期用戶ID
 def cleanup_expired_users():
     try:
@@ -657,7 +724,12 @@ def cleanup_expired_users():
 init_db()
 
 if __name__ == '__main__':
-    # 啟動服務器，設定端口為 24068
+    # # 啟動服務器
+    # port = int(os.environ.get('PORT', 5000))
+    # print(f"服務器運行在 http://localhost:{port}")
+    # print('請將前端API_URL更新為此地址')
+
+    # # 啟動服務器，設定端口為 24068
     port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
     print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
     print('請將前端API_URL更新為此地址')

@@ -357,6 +357,28 @@ main {
     word-wrap: break-word;
 }
 
+/* 空頻道提示 */
+.empty-channel-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 20px;
+}
+
+.empty-channel-message i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.7;
+}
+
+.empty-channel-message p {
+    font-size: 16px;
+}
+
 /* 載入指示器 */
 .loading-container {
     display: flex;
@@ -425,6 +447,39 @@ main {
     outline: none;
 }
 
+/* 已刪除消息樣式 */
+.deleted-message {
+    color: var(--text-secondary);
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.deleted-message i {
+    margin-right: 5px;
+}
+
+/* 刪除消息按鈕 */
+.delete-message-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.message-content:hover .delete-message-btn {
+    opacity: 0.7;
+}
+
+.delete-message-btn:hover {
+    opacity: 1 !important;
+    color: #e74c3c;
+}
+
 #send-button {
     background: none;
     border: none;
@@ -444,6 +499,88 @@ main {
 .emoji-picker-toggle {
     position: relative;
     margin: 0 10px;
+}
+
+/* 格式幫助菜單 */
+.format-help-dropdown {
+    position: relative;
+    margin: 0 5px;
+}
+
+.format-help-menu {
+    position: absolute;
+    right: 0;
+    background-color: var(--sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    width: 280px;
+    z-index: 100;
+    margin-bottom: 10px;
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.format-help-menu.hidden {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+}
+
+.format-help-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+}
+
+.format-help-content p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.format-help-content code {
+    background-color: var(--input, #b48787);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+/* Markdown樣式 */
+.message-content strong {
+    font-weight: bold;
+}
+
+.message-content em {
+    font-style: italic;
+}
+
+.message-content del {
+    text-decoration: line-through;
+}
+
+.message-content code {
+    background-color: var(--input, #b48787);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.message-content .spoiler {
+    background-color: var(--text-secondary, #888);
+    color: transparent;
+    border-radius: 3px;
+    padding: 0 3px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.message-content .spoiler.revealed {
+    background-color: transparent;
+    color: var(--text);
 }
 
 #emoji-button {
@@ -820,7 +957,9 @@ button:disabled::after {
     .theme-menu, .font-size-menu {
         left: 0;
     }
-    
+    .format-help-menu {
+        left: 0;
+    }
     /* 調整消息輸入框，避免被導航欄擋住 */
     .message-input-container {
         padding-bottom: 80px;

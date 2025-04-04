@@ -16,6 +16,9 @@ let isThemeMenuOpen = false;
 // 用於取消請求的控制器
 let currentMessageController = null;
 
+// 用於檢查滾動是否在底部的變量
+let isUserAtBottom = true;
+
 // 重試計數器
 let messageRetryCount = 0;
 let announcementRetryCount = 0;
@@ -466,6 +469,26 @@ function setupEventListeners() {
         }
     });
     
+    // 格式幫助切換
+    document.getElementById('format-help-toggle').addEventListener('click', toggleFormatHelpMenu);
+    
+    // 點擊其他地方關閉格式幫助菜單
+    document.addEventListener('click', (e) => {
+        const formatHelpMenu = document.getElementById('format-help-menu');
+        const formatHelpToggle = document.getElementById('format-help-toggle');
+        
+        if (!formatHelpMenu.contains(e.target) && e.target !== formatHelpToggle && !formatHelpToggle.contains(e.target)) {
+            formatHelpMenu.classList.add('hidden');
+        }
+    });
+    
+    // 為隱藏文字添加點擊事件（在文檔加載後）
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('spoiler')) {
+            e.target.classList.toggle('revealed');
+        }
+    });
+    
     // 切換頻道
     document.querySelectorAll('.channel').forEach(channel => {
         channel.addEventListener('click', () => {
@@ -553,6 +576,16 @@ function setupEventListeners() {
     const savedFontSize = localStorage.getItem('fontSize') || 'small';
     setTheme(savedTheme);
     setFontSize(savedFontSize);
+
+    // 檢測用戶滾動位置
+    const messagesContainer = document.getElementById('messages');
+    messagesContainer.addEventListener('scroll', () => {
+        const totalHeight = messagesContainer.scrollHeight;
+        const visibleHeight = messagesContainer.clientHeight;
+        const scrollTop = messagesContainer.scrollTop;
+        isUserAtBottom = (scrollTop + visibleHeight >= totalHeight - 10);
+    });
+    
 }
 
 // 設置表情符號選擇器
@@ -683,6 +716,22 @@ function toggleFontSizeMenu() {
     // 確保主題選單關閉
     document.getElementById('theme-menu').classList.add('hidden');
     isThemeMenuOpen = false;
+    
+    // 確保格式幫助菜單關閉
+    document.getElementById('format-help-menu').classList.add('hidden');
+}
+
+// 切換格式幫助菜單顯示/隱藏
+function toggleFormatHelpMenu() {
+    const formatHelpMenu = document.getElementById('format-help-menu');
+    formatHelpMenu.classList.toggle('hidden');
+    
+    // 確保主題選單關閉
+    document.getElementById('theme-menu').classList.add('hidden');
+    isThemeMenuOpen = false;
+    
+    // 確保字體大小選單關閉
+    document.getElementById('font-size-menu').classList.add('hidden');
 }
 
 // 設置主題
@@ -1171,9 +1220,19 @@ function displayMessages(messages) {
     const messagesContainer = document.getElementById('messages');
     messagesContainer.innerHTML = '';
     
+    // 當頻道沒有消息時顯示提示
+    if (!messages || messages.length === 0) {
+        const emptyChannelElement = document.createElement('div');
+        emptyChannelElement.classList.add('empty-channel-message');
+        emptyChannelElement.innerHTML = '<i class="fas fa-comments"></i><p>此頻道還未有訊息，請開始你的交談～</p>';
+        messagesContainer.appendChild(emptyChannelElement);
+        return;
+    }
+    
     messages.forEach(msg => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message');
+        messageElement.dataset.id = msg.id || ''; // 保存消息ID用於刪除功能
         
         // 檢查是否是當前用戶發送的消息
         if (msg.sender == currentUser) {
@@ -1186,7 +1245,29 @@ function displayMessages(messages) {
         
         const contentElement = document.createElement('div');
         contentElement.classList.add('message-content');
-        contentElement.textContent = msg.content;
+        
+        // 檢查是否是已刪除的消息
+        if (msg.deleted) {
+            contentElement.classList.add('deleted-message');
+            contentElement.innerHTML = '<i class="fas fa-ban"></i> 此訊息已被管理員刪除';
+        } else {
+            // 使用Markdown解析器處理消息內容
+            contentElement.innerHTML = window.parseMarkdown(msg.content);
+            
+            // 為管理員添加刪除按鈕
+            if (isAdmin) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.classList.add('delete-message-btn');
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteBtn.title = '刪除訊息';
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm('確定要刪除此訊息嗎？')) {
+                        deleteMessage(msg, msg.channel || currentChannel);
+                    }
+                });
+                contentElement.appendChild(deleteBtn);
+            }
+        }
         
         messageElement.appendChild(senderElement);
         messageElement.appendChild(contentElement);
@@ -1194,17 +1275,52 @@ function displayMessages(messages) {
     });
     
     // 滾動到最新消息
-    // messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (isUserAtBottom) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 }
 
 // 顯示模擬消息（僅用於開發測試）
 function displayMockMessages() {
     const mockMessages = [
-        { sender: 'User#1234', content: '你好，這是一條測試消息！', timestamp: new Date().toISOString() },
-        { sender: currentUser, content: '這是我發送的消息', timestamp: new Date().toISOString() },
-        { sender: 'User#5678', content: '歡迎來到聊天室！', timestamp: new Date().toISOString() }
+        { id: '1', sender: 'User#1234', content: '你好，這是一條測試消息！', timestamp: new Date().toISOString(), deleted: false },
+        { id: '2', sender: currentUser, content: '這是我發送的消息', timestamp: new Date().toISOString(), deleted: false },
+        { id: '3', sender: 'User#5678', content: '歡迎來到聊天室！', timestamp: new Date().toISOString(), deleted: false }
     ];
     displayMessages(mockMessages);
+}
+
+// 刪除消息（僅管理員可用）
+function deleteMessage(message, channel) {
+    if (!isAdmin || !adminSessionId) {
+        showNotification('需要管理員權限才能刪除消息', 'error');
+        return;
+    }
+    
+    // 使用jQuery的$.post方法發送請求
+    $.post(API_URL, {
+        action: 'deleteMessage',
+        data: JSON.stringify({
+            content: message.content,
+            sender: message.sender,
+            timestamp: message.timestamp,
+            channel: channel
+        }),
+        sessionId: adminSessionId
+    })
+    .done(function(data) {
+        if (data.success) {
+            // 刪除成功，重新加載消息
+            loadMessages();
+            showNotification('消息已成功刪除', 'success');
+        } else {
+            showNotification('刪除消息失敗：' + (data.error || '未知錯誤'), 'error');
+        }
+    })
+    .fail(function(error) {
+        console.error('刪除消息錯誤:', error);
+        showNotification('刪除消息請求失敗，請稍後再試', 'error');
+    });
 }
 
 // 顯示管理員登錄模態框

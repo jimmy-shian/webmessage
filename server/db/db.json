@@ -1,85 +1,28 @@
 {
-  "channel1_message": [
-    {
-      "sender": "User#9201",
-      "content": "sads",
-      "timestamp": "2025-04-03T14:41:53.452Z"
-    },
-    {
-      "sender": "User#9201",
-      "content": "qdqwd",
-      "timestamp": "2025-04-03T14:41:59.932Z"
-    },
-    {
-      "sender": "User#1282",
-      "content": "🥰🤗🤗🥰😊😘",
-      "timestamp": "2025-04-04T04:56:17.870Z"
-    },
-    {
-      "sender": "User#1282",
-      "content": "🤗",
-      "timestamp": "2025-04-04T04:56:51.328Z"
-    },
-    {
-      "sender": "User#1282",
-      "content": "🙂",
-      "timestamp": "2025-04-04T05:15:34.181Z"
-    },
-    {
-      "sender": "User#7695",
-      "content": "🤗",
-      "timestamp": "2025-04-04T05:15:47.816Z"
-    },
-    {
-      "sender": "User#1282",
-      "content": "🤗😊",
-      "timestamp": "2025-04-04T05:16:32.503Z"
-    },
-    {
-      "sender": "User#1282",
-      "content": "...",
-      "timestamp": "2025-04-04T05:17:03.520Z"
-    }
-  ],
-  "channel2_message": [
-    {
-      "sender": "User#5705",
-      "content": "😊🙂",
-      "timestamp": "2025-04-03T14:44:06.420Z"
-    }
-  ],
+  "channel1_message": [],
+  "channel2_message": [],
   "admin": [
     {
       "account": "admin",
       "password": "password",
       "uniquenum": "123456"
-    },
-    {
-      "account": "1",
-      "password": "1",
-      "uniquenum": "1"
     }
   ],
   "channels": [
     {
       "id": "channel1",
-      "name": "qup6"
+      "name": "頻道 1"
     },
     {
       "id": "channel2",
       "name": "頻道 2"
-    },
-    {
-      "id": "channel3",
-      "name": "qweqw"
     }
   ],
   "placard": [
     {
-      "announcement": "123456 \t 11234"
+      "announcement": "歡迎使用聊天應用！"
     }
   ],
-  "channel3_message": [],
   "active_users": [],
   "user_heartbeats": {}
 }
