@@ -6,11 +6,11 @@
     <title>聊天應用</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" type="image/png" href="https://jimmy-shian.github.io/webmessage/img/chat1.jpg">
-    <!-- 在你的 base.html 或 index.html 的 <head> 中加入 -->
-        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
     <!-- <link rel="stylesheet" href="style.css"> -->
-    <link rel="stylesheet" href="https://jimmy-shian.github.io/webmessage/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 <body class="theme-light">
     <div class="container">
@@ -151,7 +151,7 @@
 
     <!-- <script src="markdown.js"></script>
     <script src="script.js"></script> -->
-    <script src="https://jimmy-shian.github.io/webmessage/markdown.js"></script>
-    <script src="https://jimmy-shian.github.io/webmessage/script.js"></script>
+    <script src="{{ url_for('static', filename='markdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

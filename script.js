@@ -184,23 +184,43 @@ const commonEmojis = {
 document.addEventListener('DOMContentLoaded', () => {
     initUser();
     setupEventListeners();
-    loadChannels();
     
     // 創建懸浮通知容器
     createNotificationContainer();
-
+    
     setupEmojiPicker();
     setupChannelToggle();
     
     loadMessages();
+    loadAnnouncement();
+    loadChannels();
+
     getOnlineUsersCount();
     sendHeartbeat();
 
-    window.messageInterval = setInterval(loadMessages, 5000); // 每5秒刷新一次消息
-    window.announcementInterval = setInterval(loadAnnouncement, 10000); // 每10秒刷新一次公告
+    // 建立 SSE 連接
+    const eventSource = new EventSource(`${API_URL}/events`);
+
+    // eventSource.onmessage = function(event) {
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.messages) {
+        // updateMessages(data.messages);
+        loadMessages();
+      }
+      if (data.channels) {
+        // updateChannels(data.channels);
+        channels = data.channels;
+        updateChannelList();
+      }
+      if (data.announcement) {
+        // updateAnnouncement(data.announcement);
+        document.getElementById('announcement').textContent = data.announcement;
+      }
+    };
     
     // 添加用戶活動心跳，每5分鐘發送一次
-    window.heartbeatInterval = setInterval(sendHeartbeat, 15000); // 每30秒發送一次心跳
+    window.heartbeatInterval = setInterval(sendHeartbeat, 60000); // 每30秒發送一次心跳
 });
 
 // 設置頻道列表收合功能
@@ -332,15 +352,26 @@ function loadChannels() {
 
 // 初始化用戶
 function initUser() {
-    // 檢查本地存儲中是否有用戶ID
+    // 檢查本地存儲中是否有用戶ID和特殊字串
     let userId = localStorage.getItem('userId');
-    if (!userId) {
+    let userToken = localStorage.getItem('userToken');
+    
+    if (!userId || !userToken) {
         // 生成隨機4位數字作為用戶ID
         userId = Math.floor(1000 + Math.random() * 9000).toString();
+        // 生成隨機16字元的特殊字串(英文大小寫+數字)
+        userToken = Array(16).fill(0).map(() => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            return chars[Math.floor(Math.random() * chars.length)];
+        }).join('');
+        
+        // 儲存到本地
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('userToken', userToken);
     }
     
     // 檢查用戶ID是否已存在於服務器
-    checkAndRegisterUserId(userId);
+    checkAndRegisterUserId(userId, userToken);
     
     // 檢查是否有管理員會話ID
     adminSessionId = localStorage.getItem('adminSessionId');
@@ -351,26 +382,24 @@ function initUser() {
         isAdmin = false;
         updateAdminUI();
     }
-    
-    // 添加頁面卸載事件，釋放用戶ID
-    // window.addEventListener('beforeunload', releaseUserId);
 }
 
 // 檢查並註冊用戶ID
-function checkAndRegisterUserId(userId) {
+function checkAndRegisterUserId(userId, userToken) {
     $.get(API_URL, {
         action: 'checkUserId',
-        userId: userId
+        userId: userId,
+        userToken: userToken
     })
     .done(function(data) {
         if (data.success) {
             if (data.exists) {
                 // ID已存在，生成新ID
                 const newUserId = Math.floor(1000 + Math.random() * 9000).toString();
-                checkAndRegisterUserId(newUserId);
+                checkAndRegisterUserId(newUserId, userToken);
             } else {
                 // ID不存在，註冊ID
-                registerUserId(userId);
+                registerUserId(userId, userToken);
             }
         } else {
             console.error('檢查用戶ID失敗:', data.error);
@@ -386,11 +415,12 @@ function checkAndRegisterUserId(userId) {
 }
 
 // 註冊用戶ID
-function registerUserId(userId) {
+function registerUserId(userId, userToken) {
     $.post(API_URL, {
         action: 'registerUserId',
         data: JSON.stringify({
             userId: userId,
+            userToken: userToken,
             timestamp: new Date().toISOString() // 添加時間戳作為初始心跳
         })
     })
@@ -404,7 +434,7 @@ function registerUserId(userId) {
         } else if (data.exists) {
             // ID已存在，生成新ID
             const newUserId = Math.floor(1000 + Math.random() * 9000).toString();
-            checkAndRegisterUserId(newUserId);
+            checkAndRegisterUserId(newUserId, userToken);
         } else {
             console.error('註冊用戶ID失敗:', data.error);
             // 出錯時使用本地ID

@@ -4,18 +4,25 @@ import json
 import uuid
 import time
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, stream_with_context, Response
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # 啟用跨域資源共享
+# 開啟所有來源的 CORS，包含 null（檔案直開情況）
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # 管理員會話緩存
 admin_sessions = {}
+# 最後推送的數據狀態
+last_pushed_data = {
+    'messages': {},
+    'channels': [],
+    'announcement': ''
+}
 # 管理員會話超時時間（30分鐘，單位：秒）
 ADMIN_SESSION_TIMEOUT = 30 * 60
 # 用戶心跳超時時間（1分鐘，單位：秒）
-USER_HEARTBEAT_TIMEOUT = 30
+USER_HEARTBEAT_TIMEOUT = 1 * 60
 
 # 確保數據目錄存在
 db_dir = os.path.join(os.path.dirname(__file__), 'db')
@@ -40,8 +47,9 @@ def init_db():
                 {"id": "channel2", "name": "頻道 2"}
             ],
             "placard": [{"announcement": "歡迎使用聊天應用！"}],
-            "active_users": [],  # 添加活躍用戶ID列表
-            "user_heartbeats": {}  # 添加用戶心跳時間記錄
+            "active_users": [],
+            "user_tokens": {},
+            "user_heartbeats": {}
         }
         with open(db_file, 'w', encoding='utf-8') as f:
             json.dump(default_data, f, ensure_ascii=False, indent=2)
@@ -92,6 +100,95 @@ def validate_admin_session(session_id):
     session['expire_time'] = current_time + ADMIN_SESSION_TIMEOUT
     return True
 
+# 檢查是否有新消息
+def has_new_message(db=None):
+    db = db or load_db()
+    for channel in db.get('channels', []):
+        channel_id = channel['id']
+        current_messages = db.get(f"{channel_id}_message", [])
+        last_messages = last_pushed_data['messages'].get(channel_id, [])
+        
+        # 快速檢查：消息數量不同
+        if len(current_messages) != len(last_messages):
+            return True
+            
+        # 如果數量相同，檢查最後修改時間
+        if current_messages and last_messages:
+            current_last_time = current_messages[-1].get('timestamp')
+            last_last_time = last_messages[-1].get('timestamp')
+            if current_last_time != last_last_time:
+                return True
+    return False
+
+# 檢查是否有新頻道
+def has_new_channel(db=None):
+    db = db or load_db()
+    current_channels = db.get('channels', [])
+    if len(current_channels) != len(last_pushed_data['channels']):
+        return True
+    # 檢查每個頻道的ID和名稱是否相同
+    for i, channel in enumerate(current_channels):
+        if (channel['id'] != last_pushed_data['channels'][i]['id'] or 
+            channel['name'] != last_pushed_data['channels'][i]['name']):
+            return True
+    return False
+
+# 檢查是否有新公告
+def has_new_announcement(db=None):
+    db = db or load_db()
+    current_announcement = db.get('placard', [{}])[0].get('announcement', '')
+    return current_announcement != last_pushed_data.get('announcement', '')
+
+# 獲取新消息
+def get_new_messages(db=None):
+    db = db or load_db()
+    messages = {}
+    for channel in db.get('channels', []):
+        channel_id = channel['id']
+        messages[channel_id] = db.get(f"{channel_id}_message", [])
+    
+    # 只保存必要的參考數據
+    last_pushed_data['messages'] = {
+        channel['id']: [{'timestamp': msg['timestamp']} for msg in messages[channel['id']]] 
+        for channel in db.get('channels', [])
+    }
+    return messages
+
+# 獲取新頻道
+def get_new_channels(db=None):
+    db = db or load_db()
+    channels = db.get('channels', [])
+    last_pushed_data['channels'] = channels
+    return channels
+
+# 獲取新公告
+def get_new_announcement(db=None):
+    db = db or load_db()
+    announcement = db.get('placard', [{}])[0].get('announcement', '')
+    last_pushed_data['announcement'] = announcement
+    return announcement
+
+# SSE事件流路由
+@app.route('/events')
+def sse_stream():
+    def event_stream():
+        while True:
+            try:
+                db = None
+                # 檢查是否有新消息、頻道或公告更新
+                # if has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
+                data = {
+                    'messages': get_new_messages(db),
+                    'channels': get_new_channels(db),
+                    'announcement': get_new_announcement(db)
+                }
+                yield f"data: {json.dumps(data)}\n\n"
+                time.sleep(5)
+            except Exception as e:
+                print(f"SSE推送錯誤: {e}")
+                time.sleep(10)  # 錯誤時等待更長時間
+    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+
 # 處理GET和POST請求的統一入口
 @app.route('/', methods=['GET', 'POST'])
 def handle_request():
@@ -112,7 +209,7 @@ def handle_get_request():
         elif action == 'getChannels':
             return get_channels()
         elif action == 'checkUserId':
-            return check_user_id(request.args.get('userId'))
+            return check_user_id(request.args.get('userId'), request.args.get('userToken'))
         else:
             return jsonify({
                 'success': False,
@@ -488,7 +585,7 @@ def check_admin_session(session_id):
     })
 
 # 檢查用戶ID是否存在
-def check_user_id(user_id):
+def check_user_id(user_id, user_token=None):
     try:
         if not user_id:
             return jsonify({
@@ -498,14 +595,24 @@ def check_user_id(user_id):
         
         db = load_db()
         active_users = db.get('active_users', [])
+        user_tokens = db.get('user_tokens', {})
         
         # 檢查ID是否已經存在
         exists = user_id in active_users
         
-        return jsonify({
-            'success': True,
-            'exists': exists
-        })
+        # 如果有提供token，檢查是否匹配
+        if exists and user_token and user_id in user_tokens:
+            exists = (user_tokens[user_id] == user_token)
+        
+            return jsonify({
+                'success': True,
+                'exists': False
+            })
+        else:
+            return jsonify({
+               'success': True,
+                'exists': exists
+            })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -519,26 +626,37 @@ def register_user_id(data):
             data = json.loads(data)
         
         user_id = data.get('userId')
-        if not user_id:
+        user_token = data.get('userToken')
+        if not user_id or not user_token:
             return jsonify({
                 'success': False,
-                'error': '用戶ID不能為空'
+                'error': '用戶ID和token不能為空'
             })
         
         db = load_db()
-        active_users = db.get('active_users', [])
+        active_users = set(db.get('active_users', [])) 
+        user_tokens = db.get('user_tokens', {})
         
         # 檢查ID是否已經存在
-        if user_id in active_users:
-            return jsonify({
-                'success': False,
-                'error': '用戶ID已存在',
-                'exists': True
-            })
+        if user_id in active_users and user_id in user_tokens:
+            # 如果token匹配，則允許使用現有ID
+            if user_tokens[user_id] == user_token:
+                return jsonify({
+                    'success': True,
+                    'exists': False
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': '用戶ID已存在',
+                    'exists': True
+                })
         
-        # 添加新用戶ID
-        active_users.append(user_id)
-        db['active_users'] = active_users
+        # 添加新用戶ID和token
+        active_users.add(user_id)
+        user_tokens[user_id] = user_token
+        db['active_users'] = list(active_users)
+        db['user_tokens'] = user_tokens
         save_db(db)
         
         return jsonify({
@@ -605,10 +723,10 @@ def handle_user_heartbeat(data):
         db['user_heartbeats'] = user_heartbeats
         
         # 確保用戶在活躍列表中
-        active_users = db.get('active_users', [])
+        active_users = set(db.get('active_users', [])) 
         if user_id not in active_users:
-            active_users.append(user_id)
-            db['active_users'] = active_users
+            active_users.add(user_id)
+            db['active_users'] = list(active_users)
         
         save_db(db)
         
@@ -687,6 +805,7 @@ def cleanup_expired_users():
 
     try:
         db = load_db()
+        user_tokens = db.get('user_tokens', {})
         user_heartbeats = db.get('user_heartbeats', {})
         active_users = db.get('active_users', [])
         current_time = time.time()
@@ -705,16 +824,19 @@ def cleanup_expired_users():
                 except (ValueError, TypeError):
                     # 如果日期格式不正確，使用當前時間
                     last_heartbeat = 0
-            if (current_time - last_heartbeat) <= USER_HEARTBEAT_TIMEOUT:
+            print(f'用戶 {user_id} 心跳相差時間: {(current_time - last_heartbeat)}')
+            if int(current_time - last_heartbeat) <= USER_HEARTBEAT_TIMEOUT:
                 new_active_users.append(user_id)
             else:
                 if user_id in user_heartbeats:
+                    del user_tokens[user_id]
                     del user_heartbeats[user_id]
                 cleaned += 1
-                print(f'用戶 {user_id} 超過 30秒 心跳，刪除')
+                print(f'用戶 {user_id} 超過 1分鐘 心跳，刪除')
         
         # 更新活躍用戶列表和心跳記錄
         db['active_users'] = new_active_users
+        db['user_tokens'] = user_tokens
         db['user_heartbeats'] = user_heartbeats
         save_db(db)
         
@@ -728,6 +850,7 @@ def cleanup_expired_users():
 init_db()
 
 if __name__ == '__main__':
+
     # # 啟動服務器
     # port = int(os.environ.get('PORT', 5000))
     # print(f"服務器運行在 http://localhost:{port}")
@@ -743,7 +866,7 @@ if __name__ == '__main__':
     def cleanup_task():
         while True:
             cleanup_expired_users()
-            time.sleep(10)  # 每分鐘檢查一次
+            time.sleep(75)  # 每分鐘檢查一次
     
     # 啟動清理線程
     cleanup_thread = threading.Thread(target=cleanup_task)
