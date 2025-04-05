@@ -6,6 +6,8 @@
     <title>聊天應用</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" type="image/png" href="https://jimmy-shian.github.io/webmessage/img/chat1.jpg">
+    <!-- 在你的 base.html 或 index.html 的 <head> 中加入 -->
+        <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
     <!-- <link rel="stylesheet" href="style.css"> -->
     <link rel="stylesheet" href="https://jimmy-shian.github.io/webmessage/style.css">
@@ -16,6 +18,7 @@
         <header>
             <div class="user-info">
                 <span id="user-name">User#0000</span>
+                <span id="online-users-count" class="online-users-count">目前上線人數: 0</span>
             </div>
             <div class="marquee-container">
                 <div class="marquee" id="announcement">歡迎使用聊天應用！</div>
@@ -146,8 +149,8 @@
     <script src="https://cdn.jsdelivr.net/npm/emoji-toolkit@7.0.0/lib/js/joypixels.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
-    <!-- <script src="markdown.js"></script> -->
-    <!-- <script src="script.js"></script> -->
+    <!-- <script src="markdown.js"></script>
+    <script src="script.js"></script> -->
     <script src="https://jimmy-shian.github.io/webmessage/markdown.js"></script>
     <script src="https://jimmy-shian.github.io/webmessage/script.js"></script>
 </body>

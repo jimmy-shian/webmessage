@@ -84,6 +84,7 @@ body {
     color: var(--text);
     height: 100vh;
     overflow: hidden;
+    position: static;
 }
 
 .container {
@@ -103,8 +104,17 @@ header {
 }
 
 .user-info {
-    flex: 0 0 150px;
+    gap: 20px;
     font-weight: bold;
+    display: flex;
+}
+#user-name{
+    font-size: 1.5rem;
+}
+.online-users-count {
+    font-size: 0.8rem;
+    color: var(--text);
+    opacity: 0.6;
 }
 
 .marquee-container {
@@ -409,6 +419,11 @@ main {
     border-radius: 18px;
     background-color: var(--message-bg);
     display: inline-block;
+    max-width: 100%;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    text-align: start;
 }
 
 .message-sender {
@@ -493,6 +508,16 @@ main {
 #send-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* 發送按鈕冷卻時間樣式 */
+.cooldown-text {
+    display: inline-block;
+    width: 100%;
+    height: 100%;
+    font-weight: bold;
+    color: var(--text);
+    font-size: 14px;
 }
 
 /* 表情符號選擇器 */
@@ -595,7 +620,7 @@ main {
 .emoji-picker {
     position: absolute;
     bottom: 40px;
-    right: 0;
+    right: -30px;
     width: 280px;
     height: 300px;
     background-color: var(--bg);
@@ -941,6 +966,9 @@ button:disabled::after {
     header {
         flex-wrap: wrap;
         height: auto;
+        position: sticky;
+        top: 0;
+        z-index: 100;
     }
     
     .user-info {
@@ -963,5 +991,13 @@ button:disabled::after {
     /* 調整消息輸入框，避免被導航欄擋住 */
     .message-input-container {
         padding-bottom: 80px;
+        position: sticky;
+        bottom: 0;
+        z-index: 90;
+    }
+    
+    /* 確保聊天區域有足夠的空間 */
+    .chat-area {
+        padding-bottom: 60px;
     }
 }

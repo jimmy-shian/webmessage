@@ -193,11 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupChannelToggle();
     
     loadMessages();
+    getOnlineUsersCount();
     window.messageInterval = setInterval(loadMessages, 5000); // 每5秒刷新一次消息
     window.announcementInterval = setInterval(loadAnnouncement, 10000); // 每10秒刷新一次公告
     
     // 添加用戶活動心跳，每5分鐘發送一次
-    window.heartbeatInterval = setInterval(sendHeartbeat, 5 * 60 * 1000); // 每5分鐘發送一次心跳
+    window.heartbeatInterval = setInterval(sendHeartbeat, 60000); // 每10秒發送一次心跳
 });
 
 // 設置頻道列表收合功能
@@ -350,7 +351,7 @@ function initUser() {
     }
     
     // 添加頁面卸載事件，釋放用戶ID
-    window.addEventListener('beforeunload', releaseUserId);
+    // window.addEventListener('beforeunload', releaseUserId);
 }
 
 // 檢查並註冊用戶ID
@@ -816,6 +817,19 @@ function sendMessage() {
     // 清空輸入框
     messageInput.value = '';
     messageInput.focus();
+    
+    // 添加冷卻時間視覺提示
+    let cooldownTime = 3;
+    const cooldownInterval = setInterval(() => {
+        cooldownTime--;
+        if (cooldownTime > 0) {
+            sendButton.innerHTML = `<span class="cooldown-text">${cooldownTime}</span>`;
+        } else {
+            clearInterval(cooldownInterval);
+            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            sendButton.disabled = false;
+        }
+    }, 1000);
 }
 
 // 發送消息到Google Apps Script
@@ -858,6 +872,57 @@ function sendMessageToGAS(message, sendButton) {
 }
 
 
+// 格式化時間戳，非當天消息顯示月日
+function formatTimestamp(timestamp) {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() && 
+                   date.getMonth() === now.getMonth() && 
+                   date.getFullYear() === now.getFullYear();
+    
+    // 格式化時間（時:分）
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    
+    // 如果不是今天，添加月/日
+    if (!isToday) {
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${month}/${day} ${timeStr}`;
+    }
+    
+    return timeStr;
+}
+
+// 更新在線人數顯示
+function updateOnlineUsersCount(count) {
+    const countElement = document.getElementById('online-users-count');
+    if (countElement) {
+        countElement.textContent = `目前上線人數: ${count}`;
+    }
+}
+
+// 從服務器獲取在線人數
+function getOnlineUsersCount() {
+    $.get(API_URL, {
+        action: 'getMessages',
+        channel: currentChannel
+    })
+    .done(function(data) {
+        if (data.success) {
+            // 從服務器響應中獲取活躍用戶數量
+            const activeUsers = data.active_users || [];
+            updateOnlineUsersCount(activeUsers.length);
+        }
+    })
+    .fail(function(error) {
+        console.error('獲取在線人數錯誤:', error);
+    });
+}
+
 // 從Google Apps Script加載消息
 let lastMessageCount = 0;
 let lastMessageTimestamp = '';
@@ -895,6 +960,11 @@ function loadMessages() {
             // 檢查是否有新消息
             const messages = data.messages || [];
             const latestTimestamp = messages.length > 0 ? messages[messages.length - 1].timestamp : '';
+            
+            // 更新在線人數
+            if (data.active_users) {
+                updateOnlineUsersCount(data.active_users.length);
+            }
             
             if (currentUser) {
                 displayMessages(messages);
@@ -1241,7 +1311,10 @@ function displayMessages(messages) {
         
         const senderElement = document.createElement('div');
         senderElement.classList.add('message-sender');
-        senderElement.textContent = msg.sender;
+        
+        // 添加時間戳顯示
+        const formattedTime = formatTimestamp(msg.timestamp);
+        senderElement.textContent = `${msg.sender} ${formattedTime ? '· ' + formattedTime : ''}`;
         
         const contentElement = document.createElement('div');
         contentElement.classList.add('message-content');

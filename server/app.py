@@ -210,9 +210,9 @@ def send_message(message_data):
             'deleted': False
         })
         
-        # 保留最新的100條消息
-        if len(db[collection_name]) > 100:
-            db[collection_name] = db[collection_name][-100:]
+        # 保留最新的50條消息
+        if len(db[collection_name]) > 50:
+            db[collection_name] = db[collection_name][-50:]
         
         save_db(db)
         
@@ -233,10 +233,12 @@ def get_messages():
         db = get_or_create_collection(collection_name)
         
         messages = db[collection_name]
+        active_users = db.get('active_users', [])
         
         return jsonify({
             'success': True,
-            'messages': messages
+            'messages': messages,
+            'active_users': active_users
         })
     except Exception as e:
         return jsonify({
@@ -696,13 +698,14 @@ def cleanup_expired_users():
             last_heartbeat = 0
             if user_id in user_heartbeats:
                 try:
-                    last_heartbeat = time.mktime(datetime.fromisoformat(user_heartbeats[user_id].replace('Z', '+00:00')).timetuple())
+                    last_heartbeat = time.mktime( datetime.fromisoformat(user_heartbeats[user_id].replace('Z', '+00:00')).timetuple() )
+                    
                 except (ValueError, TypeError):
                     # 如果日期格式不正確，使用當前時間
                     last_heartbeat = 0
-            
-            # 如果用戶超過5分鐘沒有心跳，則移除
-            if current_time - last_heartbeat <= USER_HEARTBEAT_TIMEOUT:
+                        
+            if (current_time - last_heartbeat)/1000 <= USER_HEARTBEAT_TIMEOUT:
+                print(f'用戶 {user_id} 未超過5分鐘心跳，保留')
                 new_active_users.append(user_id)
             else:
                 if user_id in user_heartbeats:
@@ -729,7 +732,7 @@ if __name__ == '__main__':
     # print(f"服務器運行在 http://localhost:{port}")
     # print('請將前端API_URL更新為此地址')
 
-    # # 啟動服務器，設定端口為 24068
+    # 啟動服務器，設定端口為 24068
     port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
     print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
     print('請將前端API_URL更新為此地址')
@@ -739,7 +742,7 @@ if __name__ == '__main__':
     def cleanup_task():
         while True:
             cleanup_expired_users()
-            time.sleep(60)  # 每分鐘檢查一次
+            time.sleep(90)  # 每分鐘檢查一次
     
     # 啟動清理線程
     cleanup_thread = threading.Thread(target=cleanup_task)

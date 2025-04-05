@@ -1,10 +1,53 @@
 {
-  "channel1_message": [],
+  "channel1_message": [
+    {
+      "id": "48127e3e-0e7e-48fb-820e-0505213ba578",
+      "sender": "User#1282",
+      "content": "f3f3",
+      "timestamp": "2025-04-05T05:32:08.703Z",
+      "deleted": false
+    },
+    {
+      "id": "673dcfe7-eac4-4daa-ad2f-71110409160b",
+      "sender": "User#1282",
+      "content": "2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd2f1fascvddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "timestamp": "2025-04-05T05:32:25.152Z",
+      "deleted": false
+    },
+    {
+      "id": "1fe9f011-bd4f-45ab-a53f-f568b22d74c6",
+      "sender": "User#8022",
+      "content": "🤗",
+      "timestamp": "2025-04-05T06:11:03.018Z",
+      "deleted": false
+    },
+    {
+      "id": "014aca67-9144-48a5-aca4-f1bc6de260d0",
+      "sender": "User#2067",
+      "content": "😶",
+      "timestamp": "2025-04-05T06:13:22.990Z",
+      "deleted": false
+    },
+    {
+      "id": "aa31fdd1-b01a-4246-8957-110dedce5cc3",
+      "sender": "User#4472",
+      "content": "🥰",
+      "timestamp": "2025-04-05T06:13:32.209Z",
+      "deleted": false
+    },
+    {
+      "id": "0f6dac2d-8810-4f0a-af34-65aa5ec1edc7",
+      "sender": "User#7891",
+      "content": "🤣",
+      "timestamp": "2025-04-05T06:34:38.043Z",
+      "deleted": false
+    }
+  ],
   "channel2_message": [],
   "admin": [
     {
       "account": "admin",
-      "password": "password",
+      "password": "1",
       "uniquenum": "123456"
     }
   ],
@@ -23,6 +66,12 @@
       "announcement": "歡迎使用聊天應用！"
     }
   ],
-  "active_users": [],
-  "user_heartbeats": {}
+  "active_users": [
+    "9096",
+    "1392"
+  ],
+  "user_heartbeats": {
+    "9096": "2025-04-05T06:41:53.270Z",
+    "1392": "2025-04-05T06:41:44.256Z"
+  }
 }
