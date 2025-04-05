@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.announcementInterval = setInterval(loadAnnouncement, 10000); // 每10秒刷新一次公告
     
     // 添加用戶活動心跳，每5分鐘發送一次
-    window.heartbeatInterval = setInterval(sendHeartbeat, 30000); // 每10秒發送一次心跳
+    window.heartbeatInterval = setInterval(sendHeartbeat, 15000); // 每30秒發送一次心跳
 });
 
 // 設置頻道列表收合功能

@@ -14,8 +14,8 @@ CORS(app)  # 啟用跨域資源共享
 admin_sessions = {}
 # 管理員會話超時時間（30分鐘，單位：秒）
 ADMIN_SESSION_TIMEOUT = 30 * 60
-# 用戶心跳超時時間（5分鐘，單位：秒）
-USER_HEARTBEAT_TIMEOUT = 5 * 60
+# 用戶心跳超時時間（1分鐘，單位：秒）
+USER_HEARTBEAT_TIMEOUT = 30
 
 # 確保數據目錄存在
 db_dir = os.path.join(os.path.dirname(__file__), 'db')
@@ -683,6 +683,8 @@ def delete_message(data, session_id):
 
 # 清理過期用戶ID
 def cleanup_expired_users():
+    print(f'檢查用戶ID')
+
     try:
         db = load_db()
         user_heartbeats = db.get('user_heartbeats', {})
@@ -703,14 +705,13 @@ def cleanup_expired_users():
                 except (ValueError, TypeError):
                     # 如果日期格式不正確，使用當前時間
                     last_heartbeat = 0
-                        
-            if (current_time - last_heartbeat)/1000 <= USER_HEARTBEAT_TIMEOUT:
-                print(f'用戶 {user_id} 未超過5分鐘心跳，保留')
+            if (current_time - last_heartbeat) <= USER_HEARTBEAT_TIMEOUT:
                 new_active_users.append(user_id)
             else:
                 if user_id in user_heartbeats:
                     del user_heartbeats[user_id]
                 cleaned += 1
+                print(f'用戶 {user_id} 超過 30秒 心跳，刪除')
         
         # 更新活躍用戶列表和心跳記錄
         db['active_users'] = new_active_users
@@ -742,7 +743,7 @@ if __name__ == '__main__':
     def cleanup_task():
         while True:
             cleanup_expired_users()
-            time.sleep(20)  # 每分鐘檢查一次
+            time.sleep(10)  # 每分鐘檢查一次
     
     # 啟動清理線程
     cleanup_thread = threading.Thread(target=cleanup_task)
