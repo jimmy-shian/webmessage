@@ -742,7 +742,7 @@ if __name__ == '__main__':
     def cleanup_task():
         while True:
             cleanup_expired_users()
-            time.sleep(90)  # 每分鐘檢查一次
+            time.sleep(20)  # 每分鐘檢查一次
     
     # 啟動清理線程
     cleanup_thread = threading.Thread(target=cleanup_task)
