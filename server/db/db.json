@@ -1,73 +1,24 @@
 {
   "channel1_message": [
     {
-      "id": "6cd12a42-2a1b-476b-affc-2c11410f3c9b",
-      "sender": "User#6571",
+      "id": "e7646ae5-f32f-48d5-a4f6-314a2f3a96a3",
+      "sender": "User#8058",
       "content": "?",
-      "timestamp": "2025-04-05T16:58:31.367Z",
+      "timestamp": "2025-04-06T06:38:09.781Z",
       "deleted": false
     },
     {
-      "id": "36a8c801-8bb8-45e3-9400-95e86b3ec7ad",
-      "sender": "User#6571",
-      "content": "no que?",
-      "timestamp": "2025-04-05T16:58:37.644Z",
+      "id": "83000a9b-ae67-4e56-aad4-ae11ed226528",
+      "sender": "User#8058",
+      "content": "1",
+      "timestamp": "2025-04-06T06:38:13.505Z",
       "deleted": false
     },
     {
-      "id": "789abf70-c610-420d-91a9-385e3389cc89",
-      "sender": "User#6571",
-      "content": "aaa?",
-      "timestamp": "2025-04-05T17:00:55.934Z",
-      "deleted": false
-    },
-    {
-      "id": "bd974ef7-8be1-4e42-8f30-e07fe0e3df8d",
-      "sender": "User#8619",
-      "content": "cabd",
-      "timestamp": "2025-04-05T17:01:00.490Z",
-      "deleted": false
-    },
-    {
-      "id": "554c7286-3e37-4565-94ff-baee2b356db9",
-      "sender": "User#8619",
-      "content": "joefwefw",
-      "timestamp": "2025-04-05T17:01:03.681Z",
-      "deleted": false
-    },
-    {
-      "id": "f8466d95-0b78-4f80-ba29-029b08625288",
-      "sender": "User#8619",
-      "content": "wefwf",
-      "timestamp": "2025-04-05T17:01:06.733Z",
-      "deleted": false
-    },
-    {
-      "id": "a3d0ea26-bce1-4429-b23b-d6f8a0fdd803",
-      "sender": "User#8619",
-      "content": "wefwf",
-      "timestamp": "2025-04-05T17:01:10.466Z",
-      "deleted": false
-    },
-    {
-      "id": "3f74b801-2778-4430-a16b-efa0ce22d0e1",
-      "sender": "User#8619",
-      "content": "iji",
-      "timestamp": "2025-04-05T17:01:18.091Z",
-      "deleted": false
-    },
-    {
-      "id": "6eb42432-6dac-476a-8577-01934a8f3a57",
-      "sender": "User#8619",
-      "content": "ewfefw",
-      "timestamp": "2025-04-05T17:01:22.253Z",
-      "deleted": false
-    },
-    {
-      "id": "20860964-84b7-439b-b779-57d83b4427fc",
-      "sender": "User#8619",
-      "content": "wefwewe",
-      "timestamp": "2025-04-05T17:01:25.910Z",
+      "id": "f1d8c266-baba-41f9-9651-3a88e84f32f7",
+      "sender": "User#5323",
+      "content": "u.3xul4",
+      "timestamp": "2025-04-06T06:38:23.470Z",
       "deleted": false
     }
   ],
@@ -94,10 +45,24 @@
       "announcement": "歡迎使用聊天應用！"
     }
   ],
-  "active_users": [],
+  "active_users": [
+    "5323",
+    "9258",
+    "3457",
+    "1825",
+    "8058"
+  ],
   "user_tokens": {
-    "6571": "4KGYHnFTtg3EuFbz",
-    "8619": "XASnnHQdUX4GGc9h"
+    "3457": "suGLbfgfKjnUu3yK",
+    "9258": "F3zE3EvxpG88QTnj",
+    "5323": "c9lEXqfIity0V7oF",
+    "1825": "4KGYHnFTtg3EuFbz"
   },
-  "user_heartbeats": {}
+  "user_heartbeats": {
+    "8058": "2025-04-06T06:40:09.363Z",
+    "3457": "2025-04-06T06:40:14.574Z",
+    "9258": "2025-04-06T06:40:00.368Z",
+    "5323": "2025-04-06T06:39:03.785Z",
+    "1825": "2025-04-06T06:40:11.357Z"
+  }
 }

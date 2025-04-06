@@ -204,9 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // eventSource.onmessage = function(event) {
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.messages) {
-        // updateMessages(data.messages);
-        loadMessages();
+      if (data.messages && data.active_users) {
+        updateMessages(data.messages, data.active_users);
       }
       if (data.channels) {
         // updateChannels(data.channels);
@@ -833,7 +832,8 @@ function sendMessage() {
     // 檢查消息發送頻率限制（3秒一條）
     const now = Date.now();
     if (now - lastMessageTime < 3000) {
-        showNotification('請等待3秒後再發送消息', 'warning');
+        let counttime = ((now - lastMessageTime) / 1000).toFixed(1);
+        showNotification(`請等待 ${counttime} 秒後再發送消息`, 'warning');
         return;
     }
     
@@ -1315,6 +1315,20 @@ function handleAnnouncementForm(e) {
         submitButton.disabled = false;
         submitButton.innerHTML = '儲存';
     });
+}
+
+// 更新訊息（用於SSE事件）
+function updateMessages(messagesData, active_users) {
+    // 只處理當前頻道的訊息
+    if (messagesData && messagesData[currentChannel]) {
+        const messages = messagesData[currentChannel];
+        // 使用與displayMessages相同的邏輯顯示訊息
+        displayMessages(messages);
+                    // 更新在線人數
+        if (active_users) {
+            updateOnlineUsersCount( active_users.length);
+        }
+    }
 }
 
 // 顯示消息

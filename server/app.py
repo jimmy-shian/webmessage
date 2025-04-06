@@ -16,6 +16,7 @@ admin_sessions = {}
 # 最後推送的數據狀態
 last_pushed_data = {
     'messages': {},
+    'active_users': [],
     'channels': [],
     'announcement': ''
 }
@@ -103,11 +104,18 @@ def validate_admin_session(session_id):
 # 檢查是否有新消息
 def has_new_message(db=None):
     db = db or load_db()
+    
+    active_users = db.get('active_users', [])
+    last_active_users = last_pushed_data['active_users']
+    # 快速檢查：人數
+    if len(active_users) != len(last_active_users):
+        return True
+    
     for channel in db.get('channels', []):
         channel_id = channel['id']
         current_messages = db.get(f"{channel_id}_message", [])
         last_messages = last_pushed_data['messages'].get(channel_id, [])
-        
+
         # 快速檢查：消息數量不同
         if len(current_messages) != len(last_messages):
             return True
@@ -118,6 +126,7 @@ def has_new_message(db=None):
             last_last_time = last_messages[-1].get('timestamp')
             if current_last_time != last_last_time:
                 return True
+    
     return False
 
 # 檢查是否有新頻道
@@ -143,6 +152,8 @@ def has_new_announcement(db=None):
 def get_new_messages(db=None):
     db = db or load_db()
     messages = {}
+    active_users = db.get('active_users', [])
+    
     for channel in db.get('channels', []):
         channel_id = channel['id']
         messages[channel_id] = db.get(f"{channel_id}_message", [])
@@ -152,7 +163,9 @@ def get_new_messages(db=None):
         channel['id']: [{'timestamp': msg['timestamp']} for msg in messages[channel['id']]] 
         for channel in db.get('channels', [])
     }
-    return messages
+        # 只保存必要的參考數據
+    last_pushed_data['active_users'] = active_users
+    return messages, active_users
 
 # 獲取新頻道
 def get_new_channels(db=None):
@@ -176,14 +189,16 @@ def sse_stream():
             try:
                 db = None
                 # 檢查是否有新消息、頻道或公告更新
-                # if has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
-                data = {
-                    'messages': get_new_messages(db),
-                    'channels': get_new_channels(db),
-                    'announcement': get_new_announcement(db)
-                }
-                yield f"data: {json.dumps(data)}\n\n"
-                time.sleep(5)
+                if has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
+                    messages, active_users = get_new_messages(db)
+                    data = {
+                        'messages': messages,
+                        'active_users': active_users,
+                        'channels': get_new_channels(db),
+                        'announcement': get_new_announcement(db)
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                    time.sleep(2)
             except Exception as e:
                 print(f"SSE推送錯誤: {e}")
                 time.sleep(10)  # 錯誤時等待更長時間
@@ -801,13 +816,16 @@ def delete_message(data, session_id):
 
 # 清理過期用戶ID
 def cleanup_expired_users():
-    print(f'檢查用戶ID')
 
     try:
         db = load_db()
+        active_users = db.get('active_users', [])
+        if len(active_users) == 0:
+            return
+        print(f'檢查用戶ID')
+        
         user_tokens = db.get('user_tokens', {})
         user_heartbeats = db.get('user_heartbeats', {})
-        active_users = db.get('active_users', [])
         current_time = time.time()
         cleaned = 0
         
@@ -829,7 +847,10 @@ def cleanup_expired_users():
                 new_active_users.append(user_id)
             else:
                 if user_id in user_heartbeats:
-                    del user_tokens[user_id]
+                    try:
+                        del user_tokens[user_id]
+                    except:
+                        print(f"用戶 {user_id} 無 user_tokens")
                     del user_heartbeats[user_id]
                 cleaned += 1
                 print(f'用戶 {user_id} 超過 1分鐘 心跳，刪除')
