@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
-    <!-- <link rel="stylesheet" href="style.css"> -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="style.css">
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
 
 </head>
 <body class="theme-light">
@@ -68,8 +68,8 @@
                     <button id="toggle-channels" class="channel-toggle"><i class="fas fa-chevron-up"></i></button>
                 </div>
                 <ul id="channel-list">
-                    <li class="channel active" data-channel="channel1">頻道 1</li>
-                    <li class="channel" data-channel="channel2">頻道 2</li>
+                    <li class="channel active" data-channel="channel1">頻道 1<span class="unread-indicator"></span></li>
+                    <li class="channel" data-channel="channel2">頻道 2<span class="unread-indicator"></span></li>
                 </ul>
             </div>
 
@@ -148,9 +148,9 @@
     <script src="https://cdn.jsdelivr.net/npm/emoji-toolkit@7.0.0/lib/js/joypixels.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
-    <!-- <script src="markdown.js"></script>
-    <script src="script.js"></script> -->
-    <script src="{{ url_for('static', filename='markdown.js') }}"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="markdown.js"></script>
+    <script src="script.js"></script>
+    <!-- <script src="{{ url_for('static', filename='markdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script> -->
 </body>
 </html>

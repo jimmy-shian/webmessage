@@ -297,6 +297,20 @@ main {
     overflow-y: auto;
 }
 
+.unread-indicator {
+    display: none;
+    width: 8px;
+    height: 8px;
+    background-color: red;
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.unread-indicator.show {
+    display: inline-block;
+}
+
 .channels-header {
     display: flex;
     justify-content: space-between;
@@ -336,6 +350,9 @@ main {
     cursor: pointer;
     border-bottom: 1px solid var(--border);
     transition: background-color 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .channel:hover {

@@ -1,6 +1,6 @@
 // 全局变量
-const API_URL = "http://ouo.freeserver.tw:24068";
-// const API_URL = "http://127.0.0.1:5000";
+// const API_URL = "http://ouo.freeserver.tw:24068";
+const API_URL = "http://127.0.0.1:5000";
 let currentUser = null;
 let currentChannel = 'channel1';
 let isAdmin;
@@ -12,6 +12,13 @@ let channels = [
     { id: 'channel2', name: '頻道 2' }
 ];
 let isThemeMenuOpen = false;
+
+// 用於跟踪頻道未讀狀態
+let channelUnreadStatus = {};
+// 用於存儲用戶的通知設置
+let notificationSettings = {};
+// 用於存儲每個頻道最後讀取的時間
+let channelLastReadTime = {};
 
 // 用於取消請求的控制器
 let currentMessageController = null;
@@ -190,6 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setupEmojiPicker();
     setupChannelToggle();
+    
+    // 初始化通知設置
+    initNotificationSettings();
     
     loadMessages();
     loadAnnouncement();
@@ -509,6 +519,52 @@ function sendHeartbeat() {
 function setCurrentUser(userId) {
     currentUser = `User#${userId}`;
     document.getElementById('user-name').textContent = currentUser;
+}
+
+// 初始化通知設置
+function initNotificationSettings() {
+    // 從本地存儲中加載通知設置
+    const savedSettings = localStorage.getItem('notificationSettings');
+    if (savedSettings) {
+        notificationSettings = JSON.parse(savedSettings);
+    } else {
+        // 默認所有頻道都開啟通知
+        channels.forEach(channel => {
+            notificationSettings[channel.id] = true;
+        });
+        // 保存到本地存儲
+        localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+    }
+}
+
+// 切換頻道通知設置
+function toggleChannelNotification(channelId) {
+    notificationSettings[channelId] = !notificationSettings[channelId];
+    // 保存到本地存儲
+    localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+    // 更新通知圖標
+    updateNotificationIcons();
+    // 更新未讀指示器
+    updateUnreadIndicators();
+    
+    // 顯示通知狀態提示
+    const channelName = channels.find(c => c.id === channelId)?.name || channelId;
+    const status = notificationSettings[channelId] ? '開啟' : '關閉';
+    showNotification(`已${status} ${channelName} 的通知`, 'info');
+}
+
+// 更新通知圖標
+function updateNotificationIcons() {
+    document.querySelectorAll('.channel-notification-toggle').forEach(icon => {
+        const channelId = icon.dataset.channel;
+        if (notificationSettings[channelId]) {
+            icon.innerHTML = '<i class="fas fa-bell"></i>';
+            icon.title = '關閉通知';
+        } else {
+            icon.innerHTML = '<i class="fas fa-bell-slash"></i>';
+            icon.title = '開啟通知';
+        }
+    });
 }
 
 // 設置事件監聽器
@@ -847,6 +903,12 @@ function switchChannel(channelId) {
         channelsContainer.classList.add('collapsed');
         toggleButton.classList.add('collapsed');
     }
+    
+    // 清除該頻道的未讀狀態
+    channelUnreadStatus[channelId] = false;
+    
+    // 更新未讀指示器
+    updateUnreadIndicators();
     
     // 載入新頻道的消息
     loadMessages();
@@ -1347,17 +1409,59 @@ function handleAnnouncementForm(e) {
     });
 }
 
+// 更新未讀指示器
+function updateUnreadIndicators() {
+    // 遍歷所有頻道，更新未讀指示器
+    document.querySelectorAll('.channel').forEach(channelElement => {
+        const channelId = channelElement.dataset.channel;
+        const unreadIndicator = channelElement.querySelector('.unread-indicator');
+        
+        // 如果該頻道有未讀消息且不是當前頻道，顯示未讀指示器
+        if (channelUnreadStatus[channelId] && channelId !== currentChannel && notificationSettings[channelId]) {
+            unreadIndicator.classList.add('show');
+        } else {
+            unreadIndicator.classList.remove('show');
+        }
+    });
+}
+
 // 更新訊息（用於SSE事件）
 function updateMessages(messagesData, active_users) {
-    // 只處理當前頻道的訊息
-    if (messagesData && messagesData[currentChannel]) {
-        const messages = messagesData[currentChannel];
-        // 使用與displayMessages相同的邏輯顯示訊息
-        displayMessages(messages);
-                    // 更新在線人數
-        if (active_users) {
-            updateOnlineUsersCount( active_users.length);
-        }
+    // 更新在線人數
+    if (active_users) {
+        updateOnlineUsersCount(active_users.length);
+    }
+    
+    // 處理所有頻道的消息，檢查未讀狀態
+    if (messagesData) {
+        // 遍歷所有頻道的消息
+        Object.keys(messagesData).forEach(channelId => {
+            const messages = messagesData[channelId];
+            if (!messages || messages.length === 0) return;
+            
+            // 獲取該頻道最新消息的時間戳
+            const latestMessage = messages[messages.length - 1];
+            const latestTimestamp = new Date(latestMessage.timestamp).getTime();
+            
+            // 如果是當前頻道，顯示消息並更新最後讀取時間
+            if (channelId === currentChannel) {
+                displayMessages(messages);
+                channelLastReadTime[channelId] = latestTimestamp;
+                // 當前頻道沒有未讀消息
+                channelUnreadStatus[channelId] = false;
+            } else {
+                // 如果不是當前頻道，檢查是否有新消息
+                const lastReadTime = channelLastReadTime[channelId] || 0;
+                
+                // 如果最新消息的時間戳大於最後讀取時間，標記為未讀
+                if (latestTimestamp > lastReadTime) {
+                    channelUnreadStatus[channelId] = true;
+                }
+            }
+        });
+        
+        // 更新未讀指示器
+        updateUnreadIndicators();
     }
 }
 
@@ -1583,7 +1687,20 @@ function updateChannelList() {
         const channelElement = document.createElement('li');
         channelElement.classList.add('channel');
         channelElement.dataset.channel = channel.id;
-        channelElement.textContent = channel.name;
+        
+        // 創建頻道名稱容器
+        const channelNameContainer = document.createElement('span');
+        channelNameContainer.classList.add('channel-name');
+        channelNameContainer.textContent = channel.name;
+        channelElement.appendChild(channelNameContainer);
+        
+        // 添加未讀指示器
+        const unreadIndicator = document.createElement('span');
+        unreadIndicator.classList.add('unread-indicator');
+        if (channelUnreadStatus[channel.id] && channel.id !== currentChannel && notificationSettings[channel.id]) {
+            unreadIndicator.classList.add('show');
+        }
+        channelElement.appendChild(unreadIndicator);
         
         if (channel.id === currentChannel) {
             channelElement.classList.add('active');
@@ -1598,6 +1715,9 @@ function updateChannelList() {
     
     // 如果是管理員，添加編輯按鈕
     updateChannelButtons();
+    
+    // 更新未讀指示器
+    updateUnreadIndicators();
 }
 
 // 顯示添加頻道模態框

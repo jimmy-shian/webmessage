@@ -872,15 +872,15 @@ init_db()
 
 if __name__ == '__main__':
 
-    # # 啟動服務器
-    # port = int(os.environ.get('PORT', 5000))
-    # print(f"服務器運行在 http://localhost:{port}")
-    # print('請將前端API_URL更新為此地址')
-
-    # 啟動服務器，設定端口為 24068
-    port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
-    print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
+    # 啟動服務器
+    port = int(os.environ.get('PORT', 5000))
+    print(f"服務器運行在 http://localhost:{port}")
     print('請將前端API_URL更新為此地址')
+
+    # # 啟動服務器，設定端口為 24068
+    # port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
+    # print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
+    # print('請將前端API_URL更新為此地址')
     
     # 設置定期清理過期用戶ID的任務
     import threading
