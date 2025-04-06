@@ -233,9 +233,11 @@ function setupChannelToggle() {
         toggleButton.classList.add('collapsed');
     }
     
-    toggleButton.addEventListener('click', () => {
+    toggleButton.addEventListener('click', (event) => {
         channelsContainer.classList.toggle('collapsed');
         toggleButton.classList.toggle('collapsed');
+        // 阻止事件冒泡，避免觸發document的點擊事件
+        event.stopPropagation();
     });
     
     // 監聽窗口大小變化，在切換到手機模式時自動收起頻道列表
@@ -251,6 +253,23 @@ function setupChannelToggle() {
             toggleButton.classList.remove('collapsed');
         }
     });
+    
+    // 點擊其他區域時收合頻道列表（僅在手機版）
+    document.addEventListener('click', (event) => {
+        if (window.innerWidth <= 576) {
+            // 檢查點擊是否在頻道列表或頻道切換按鈕之外
+            const isClickInsideChannels = channelsContainer.contains(event.target);
+            const isClickOnToggleButton = toggleButton.contains(event.target);
+            
+            if (!isClickInsideChannels && !isClickOnToggleButton && !channelsContainer.classList.contains('collapsed')) {
+                channelsContainer.classList.add('collapsed');
+                toggleButton.classList.add('collapsed');
+            }
+        }
+    });
+    
+    // 初始化頻道標題
+    updateChannelHeader();
 }
 
 // 創建懸浮通知容器
@@ -342,6 +361,7 @@ function loadChannels() {
             console.log("channels:", data.channels); 
             channels = data.channels;
             updateChannelList();
+            updateChannelHeader();
         }
     })
     .fail(function(error) {
@@ -817,6 +837,17 @@ function switchChannel(channelId) {
         </div>
     `;
     
+    // 更新頻道標題顯示當前選擇的頻道名稱
+    updateChannelHeader();
+    
+    // 在手機版中選擇頻道後自動收合頻道列表
+    if (window.innerWidth <= 576) {
+        const channelsContainer = document.querySelector('.channels');
+        const toggleButton = document.getElementById('toggle-channels');
+        channelsContainer.classList.add('collapsed');
+        toggleButton.classList.add('collapsed');
+    }
+    
     // 載入新頻道的消息
     loadMessages();
 }
@@ -873,7 +904,6 @@ function sendMessageToGAS(message, sendButton) {
         channel: currentChannel,
         timestamp: new Date().toISOString()
     };
-    console.log("messageData=" + JSON.stringify(messageData).toString() );
 
     // 使用jQuery的$.post方法發送消息
     $.post(API_URL, {
@@ -1605,6 +1635,13 @@ function handleChannelForm(e) {
         // 添加新頻道
         addChannel(channelName, submitButton);
     }
+}
+
+// 更新頻道標題顯示當前選擇的頻道名稱
+function updateChannelHeader() {
+    const channelHeader = document.querySelector('.channels-header h2');
+    const currentChannelName = channels.find(c => c.id === currentChannel)?.name || '未知頻道';
+    channelHeader.textContent = `頻道 [${currentChannelName}]`;
 }
 
 // 刪除頻道

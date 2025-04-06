@@ -198,7 +198,7 @@ def sse_stream():
                         'announcement': get_new_announcement(db)
                     }
                     yield f"data: {json.dumps(data)}\n\n"
-                    time.sleep(2)
+                time.sleep(2)
             except Exception as e:
                 print(f"SSE推送錯誤: {e}")
                 time.sleep(10)  # 錯誤時等待更長時間
