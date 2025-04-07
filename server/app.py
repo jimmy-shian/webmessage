@@ -11,6 +11,14 @@ app = Flask(__name__)
 # 開啟所有來源的 CORS，包含 null（檔案直開情況）
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# 裝飾器設定回應快取控制 response
+@app.after_request
+def disable_cache(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Expires'] = '-1'
+    response.headers['Pragma'] = 'no-cache'
+    return response
+
 # 管理員會話緩存
 admin_sessions = {}
 # 最後推送的數據狀態
@@ -79,8 +87,9 @@ def save_db(data):
 def get_or_create_collection(collection_name):
     db = load_db()
     if collection_name not in db:
-        db[collection_name] = []
-        save_db(db)
+        db = None
+        # db[collection_name] = []
+        # save_db(db)
     return db
 
 # 驗證管理員會話

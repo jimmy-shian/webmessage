@@ -2,7 +2,9 @@
 // const API_URL = "http://ouo.freeserver.tw:24068";
 const API_URL = "http://127.0.0.1:5000";
 let currentUser = null;
-let currentChannel = 'channel1';
+// 從網址中擷取 channel 參數
+const urlParams = new URLSearchParams(window.location.search);
+let currentChannel = urlParams.get('channel') || 'channel1';
 let isAdmin;
 let adminSessionId;
 let adminSessionCheckTimer;
@@ -201,9 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初始化通知設置
     initNotificationSettings();
     
-    loadMessages();
-    loadAnnouncement();
     loadChannels();
+    loadAnnouncement();
+    loadMessages();
 
     getOnlineUsersCount();
     sendHeartbeat();
@@ -362,7 +364,6 @@ function showNetworkErrorNotification() {
 // getChannels
 // 從Google Apps Script加載getChannels 名稱
 function loadChannels() {
-    console.log("START LOAD CHANNEL")
     $.get(API_URL, {
         action: 'getChannels'
     })
@@ -370,6 +371,10 @@ function loadChannels() {
         if (data.success && data.channels) {
             console.log("channels:", data.channels); 
             channels = data.channels;
+            // 檢查 currentChannel 是否在 channels 陣列中
+            if (!channels.some(channel => channel.id == currentChannel)) {
+                currentChannel = channels[0].id;
+            }
             updateChannelList();
             updateChannelHeader();
         }
@@ -535,6 +540,22 @@ function initNotificationSettings() {
         // 保存到本地存儲
         localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
     }
+    
+    // 設置通知設定菜單的事件監聽器
+    document.getElementById('notification-settings-toggle').addEventListener('click', toggleNotificationSettingsMenu);
+    
+    // 點擊其他地方關閉通知設定菜單
+    document.addEventListener('click', (e) => {
+        const notificationSettingsMenu = document.getElementById('notification-settings-menu');
+        const notificationSettingsToggle = document.getElementById('notification-settings-toggle');
+        
+        if (!notificationSettingsMenu.contains(e.target) && e.target !== notificationSettingsToggle && !notificationSettingsToggle.contains(e.target)) {
+            notificationSettingsMenu.classList.add('hidden');
+        }
+    });
+    
+    // 初始化通知設定列表
+    updateNotificationSettingsList();
 }
 
 // 切換頻道通知設置
@@ -550,7 +571,66 @@ function toggleChannelNotification(channelId) {
     // 顯示通知狀態提示
     const channelName = channels.find(c => c.id === channelId)?.name || channelId;
     const status = notificationSettings[channelId] ? '開啟' : '關閉';
-    showNotification(`已${status} ${channelName} 的通知`, 'info');
+    showNotification(`已${status} ${channelName} 的通知`, 'info', duration = 500);
+}
+
+// 切換通知設定菜單顯示/隱藏
+function toggleNotificationSettingsMenu() {
+    const notificationSettingsMenu = document.getElementById('notification-settings-menu');
+    notificationSettingsMenu.classList.toggle('hidden');
+    
+    // 確保其他菜單關閉
+    document.getElementById('theme-menu').classList.add('hidden');
+    isThemeMenuOpen = false;
+    document.getElementById('font-size-menu').classList.add('hidden');
+    document.getElementById('format-help-menu').classList.add('hidden');
+}
+
+// 更新通知設定列表
+function updateNotificationSettingsList() {
+    const channelNotificationList = document.getElementById('channel-notification-list');
+    channelNotificationList.innerHTML = '';
+    
+    // 如果沒有頻道，顯示提示
+    if (channels.length === 0) {
+        const emptyElement = document.createElement('div');
+        emptyElement.className = 'channel-notification-item';
+        emptyElement.textContent = '沒有可用的頻道';
+        channelNotificationList.appendChild(emptyElement);
+        return;
+    }
+    
+    // 為每個頻道創建通知設定項
+    channels.forEach(channel => {
+        const notificationItem = document.createElement('div');
+        notificationItem.className = 'channel-notification-item';
+        
+        const channelNameSpan = document.createElement('span');
+        channelNameSpan.textContent = channel.name;
+        
+        const toggleButton = document.createElement('button');
+        toggleButton.className = 'channel-notification-toggle';
+        toggleButton.dataset.channel = channel.id;
+        
+        // 設置按鈕圖標和標題
+        if (notificationSettings[channel.id]) {
+            toggleButton.innerHTML = '<i class="fas fa-bell"></i>';
+            toggleButton.title = '關閉通知';
+        } else {
+            toggleButton.innerHTML = '<i class="fas fa-bell-slash"></i>';
+            toggleButton.title = '開啟通知';
+        }
+        
+        // 添加點擊事件
+        toggleButton.addEventListener('click', () => {
+            toggleChannelNotification(channel.id);
+            updateNotificationSettingsList(); // 更新列表
+        });
+        
+        notificationItem.appendChild(channelNameSpan);
+        notificationItem.appendChild(toggleButton);
+        channelNotificationList.appendChild(notificationItem);
+    });
 }
 
 // 更新通知圖標
@@ -609,6 +689,8 @@ function setupEventListeners() {
     document.getElementById('theme-light').addEventListener('click', () => { setTheme('light'); toggleThemeMenu(); });
     document.getElementById('theme-gray').addEventListener('click', () => { setTheme('gray'); toggleThemeMenu(); });
     document.getElementById('theme-dark').addEventListener('click', () => { setTheme('dark'); toggleThemeMenu(); });
+    document.getElementById('theme-green').addEventListener('click', () => { setTheme('green'); toggleThemeMenu(); });
+    document.getElementById('theme-purple').addEventListener('click', () => { setTheme('purple'); toggleThemeMenu(); });
     
     // 字體大小切換
     document.getElementById('font-size-toggle').addEventListener('click', toggleFontSizeMenu);
@@ -874,7 +956,11 @@ function switchChannel(channelId) {
         currentMessageController.abort();
         currentMessageController = null;
     }
-    
+    // 更新網址列但不重新載入頁面
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set('channel', channelId);
+    window.history.replaceState({}, '', newUrl);
+
     currentChannel = channelId;
     document.querySelectorAll('.channel').forEach(channel => {
         if (channel.dataset.channel === channelId) {
@@ -1416,13 +1502,51 @@ function updateUnreadIndicators() {
         const channelId = channelElement.dataset.channel;
         const unreadIndicator = channelElement.querySelector('.unread-indicator');
         
+        // 獲取未讀消息數量
+        const unreadCount = getUnreadMessageCount(channelId);
+        
         // 如果該頻道有未讀消息且不是當前頻道，顯示未讀指示器
-        if (channelUnreadStatus[channelId] && channelId !== currentChannel && notificationSettings[channelId]) {
+        if (unreadCount > 0 && channelId !== currentChannel && notificationSettings[channelId]) {
             unreadIndicator.classList.add('show');
+            // 當未讀消息數量大於等於2時，顯示數字
+            if (unreadCount >= 2) {
+                unreadIndicator.textContent = unreadCount;
+            } else {
+                unreadIndicator.textContent = '';
+            }
         } else {
             unreadIndicator.classList.remove('show');
+            unreadIndicator.textContent = '';
         }
     });
+}
+
+// 獲取頻道未讀消息數量
+function getUnreadMessageCount(channelId) {
+    // 如果頻道沒有未讀狀態，返回0
+    if (!channelUnreadStatus[channelId]) {
+        return 0;
+    }
+    
+    // 獲取該頻道的最後讀取時間
+    const lastReadTime = channelLastReadTime[channelId] || 0;
+    
+    // 從消息數據中計算未讀消息數量
+    // 這裡假設有一個全局變量存儲了所有頻道的消息
+    // 實際實現可能需要根據應用的數據結構調整
+    let unreadCount = 0;
+    
+    // 如果有緩存的消息數據，計算未讀數量
+    if (window.cachedMessages && window.cachedMessages[channelId]) {
+        const messages = window.cachedMessages[channelId];
+        unreadCount = messages.filter(msg => {
+            const msgTime = new Date(msg.timestamp).getTime();
+            return msgTime > lastReadTime;
+        }).length;
+    }
+    
+    // 如果沒有具體數量，但知道有未讀消息，至少返回1
+    return Math.max(unreadCount, 1);
 }
 
 // 更新訊息（用於SSE事件）
@@ -1432,12 +1556,20 @@ function updateMessages(messagesData, active_users) {
         updateOnlineUsersCount(active_users.length);
     }
     
+    // 初始化緩存的消息數據（如果不存在）
+    if (!window.cachedMessages) {
+        window.cachedMessages = {};
+    }
+    
     // 處理所有頻道的消息，檢查未讀狀態
     if (messagesData) {
         // 遍歷所有頻道的消息
         Object.keys(messagesData).forEach(channelId => {
             const messages = messagesData[channelId];
             if (!messages || messages.length === 0) return;
+            
+            // 緩存消息數據以便計算未讀數量
+            window.cachedMessages[channelId] = messages;
             
             // 獲取該頻道最新消息的時間戳
             const latestMessage = messages[messages.length - 1];

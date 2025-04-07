@@ -20,7 +20,7 @@
     --light-my-message: #dcf8c6;
     
     /* 灰色主題 */
-    --gray-bg: #e0e0e0;
+    --gray-bg: #b9b9b9;
     --gray-sidebar: #c0c0c0;
     --gray-text: #333333;
     --gray-border: #b0b0b0;
@@ -28,7 +28,7 @@
     --gray-hover: #b8b8b8;
     --gray-active: #a0a0a0;
     --gray-message-bg: #d0d0d0;
-    --gray-my-message: #b8d8a6;
+    --gray-my-message: #a6ced8;
     
     /* 深色主題 */
     --dark-bg: #121212;
@@ -40,6 +40,28 @@
     --dark-active: #3a3a3a;
     --dark-message-bg: #2a2a2a;
     --dark-my-message: #056162;
+    
+    /* 護眼綠主題 */
+    --green-bg: #c2d1af; /* 調暗背景色 */
+    --green-sidebar: #a5d6a7; /* 調暗側邊欄 */
+    --green-text: #1a531e; /* 調暗文字色 */
+    --green-border: #81c784; /* 調暗邊框顏色 */
+    --green-input: #b3cf92; /* 調暗輸入框背景 */
+    --green-hover: #b9e1b0; /* 調暗hover效果 */
+    --green-active: #8bc34a; /* 調暗按鈕激活色 */
+    --green-message-bg: #97cf98; /* 調暗訊息背景 */
+    --green-my-message: #a5cc71; /* 調暗我的訊息顏色 */
+
+    /* 藍紫色主題 */
+    --purple-bg: #a9b6ef; /* 調暗背景色 */
+    --purple-sidebar: #8b8ada; /* 調暗側邊欄 */
+    --purple-text: #1a237e; /* 調暗文字色 */
+    --purple-border: #7e57c2; /* 調暗邊框顏色 */
+    --purple-input: #bfa3c4; /* 調暗輸入框背景 */
+    --purple-hover: #ba68c8; /* 調暗hover效果 */
+    --purple-active: #9c27b0; /* 調暗按鈕激活色 */
+    --purple-message-bg: #d4bcff; /* 調暗訊息背景 */
+    --purple-my-message: #b5d2f9; /* 調暗我的訊息顏色 */
 }
 
 /* 主題應用 */
@@ -77,6 +99,30 @@
     --active: var(--dark-active);
     --message-bg: var(--dark-message-bg);
     --my-message: var(--dark-my-message);
+}
+
+.theme-green {
+    --bg: var(--green-bg);
+    --sidebar: var(--green-sidebar);
+    --text: var(--green-text);
+    --border: var(--green-border);
+    --input: var(--green-input);
+    --hover: var(--green-hover);
+    --active: var(--green-active);
+    --message-bg: var(--green-message-bg);
+    --my-message: var(--green-my-message);
+}
+
+.theme-purple {
+    --bg: var(--purple-bg);
+    --sidebar: var(--purple-sidebar);
+    --text: var(--purple-text);
+    --border: var(--purple-border);
+    --input: var(--purple-input);
+    --hover: var(--purple-hover);
+    --active: var(--purple-active);
+    --message-bg: var(--purple-message-bg);
+    --my-message: var(--purple-my-message);
 }
 
 body {
@@ -164,6 +210,62 @@ header {
     display: flex;
     gap: 12px;
     align-items: center;
+}
+
+/* 通知設定樣式 */
+.notification-settings-dropdown {
+    position: relative;
+    margin-right: 5px;
+}
+
+.notification-settings-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 250px;
+    z-index: 1000;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.notification-settings-title {
+    padding: 10px;
+    font-weight: bold;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--sidebar);
+}
+
+.notification-settings-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.channel-notification-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.channel-notification-item:last-child {
+    border-bottom: none;
+}
+
+.channel-notification-toggle {
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.channel-notification-toggle:hover {
+    color: #4caf50;
 }
 
 /* 字體大小選擇器 */
@@ -299,12 +401,17 @@ main {
 
 .unread-indicator {
     display: none;
-    width: 8px;
-    height: 8px;
+    min-width: 18px;
+    height: 18px;
     background-color: red;
-    border-radius: 50%;
+    border-radius: 9px;
     margin-left: 6px;
     vertical-align: middle;
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    line-height: 18px;
+    padding: 0 4px;
 }
 
 .unread-indicator.show {
