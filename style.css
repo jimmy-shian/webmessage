@@ -393,7 +393,7 @@ main {
 
 /* 左側頻道列表樣式 */
 .channels {
-    flex: 0 0 200px;
+    flex: 0 0 22%;
     background-color: var(--sidebar);
     border-right: 1px solid var(--border);
     overflow-y: auto;
@@ -1107,12 +1107,10 @@ button:disabled::after {
     }
     
     /* 調整手機模式下的主題和字體大小選單位置 */
-    .theme-menu, .font-size-menu {
+    .theme-menu, .font-size-menu, .format-help-menu, .notification-settings-menu {
         left: 0;
     }
-    .format-help-menu {
-        left: 0;
-    }
+
     /* 調整消息輸入框，避免被導航欄擋住 */
     .message-input-container {
         padding-bottom: 80px;

@@ -1,6 +1,6 @@
 // 全局变量
-// const API_URL = "http://ouo.freeserver.tw:24068";
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = "http://ouo.freeserver.tw:24068";
+// const API_URL = "http://127.0.0.1:5000";
 let currentUser = null;
 // 從網址中擷取 channel 參數
 const urlParams = new URLSearchParams(window.location.search);
@@ -200,11 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEmojiPicker();
     setupChannelToggle();
     
-    // 初始化通知設置
-    initNotificationSettings();
     
     loadChannels();
     loadAnnouncement();
+    // 初始化通知設置
+    initNotificationSettings();
     loadMessages();
 
     getOnlineUsersCount();
@@ -576,6 +576,9 @@ function toggleChannelNotification(channelId) {
 
 // 切換通知設定菜單顯示/隱藏
 function toggleNotificationSettingsMenu() {
+    // 更新channel 通知顯示
+    updateNotificationSettingsList(); // 更新列表
+
     const notificationSettingsMenu = document.getElementById('notification-settings-menu');
     notificationSettingsMenu.classList.toggle('hidden');
     
@@ -624,7 +627,6 @@ function updateNotificationSettingsList() {
         // 添加點擊事件
         toggleButton.addEventListener('click', () => {
             toggleChannelNotification(channel.id);
-            updateNotificationSettingsList(); // 更新列表
         });
         
         notificationItem.appendChild(channelNameSpan);
@@ -649,6 +651,16 @@ function updateNotificationIcons() {
 
 // 設置事件監聽器
 function setupEventListeners() {
+    
+    // 在頁面關閉或離開時觸發
+    window.addEventListener('beforeunload', function(event) {
+        releaseUserId();
+    });
+    // 或者使用 unload 事件來確保觸發
+    window.addEventListener('unload', function(event) {
+        releaseUserId();
+    });
+
     // 發送消息
     document.getElementById('send-button').addEventListener('click', sendMessage);
     document.getElementById('message-input').addEventListener('keypress', (e) => {
@@ -731,6 +743,19 @@ function setupEventListeners() {
             });
         });
     });
+    // 點擊其他地方關閉管理員登錄菜單
+    document.addEventListener('click', (e) => {
+        const notificationSettingsMenus = document.getElementsByClassName('modal-content');
+        const notificationSettingsToggle = document.getElementById('admin-login');
+        
+        // 遍歷所有 modal-content 元素
+        Array.from(notificationSettingsMenus).forEach(menu => {
+            if (!menu.contains(e.target) && e.target !== notificationSettingsToggle && !notificationSettingsToggle.contains(e.target)) {
+                menu.closest('.modal').classList.add('hidden');
+            }
+        });
+    });
+    
     
     // 添加公告編輯按鈕（僅管理員可見）
     const announcementContainer = document.querySelector('.marquee-container');

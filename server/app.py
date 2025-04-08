@@ -198,15 +198,15 @@ def sse_stream():
             try:
                 db = None
                 # 檢查是否有新消息、頻道或公告更新
-                if has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
-                    messages, active_users = get_new_messages(db)
-                    data = {
-                        'messages': messages,
-                        'active_users': active_users,
-                        'channels': get_new_channels(db),
-                        'announcement': get_new_announcement(db)
-                    }
-                    yield f"data: {json.dumps(data)}\n\n"
+                # if has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
+                messages, active_users = get_new_messages(db)
+                data = {
+                    'messages': messages,
+                    'active_users': active_users,
+                    'channels': get_new_channels(db),
+                    'announcement': get_new_announcement(db)
+                }
+                yield f"data: {json.dumps(data)}\n\n"
                 time.sleep(2)
             except Exception as e:
                 print(f"SSE推送錯誤: {e}")
@@ -696,6 +696,7 @@ def register_user_id(data):
 # 釋放用戶ID
 def release_user_id(data):
     try:
+        # 如果傳入的 data 是字符串，將其轉換為字典
         if isinstance(data, str):
             data = json.loads(data)
         
@@ -708,22 +709,36 @@ def release_user_id(data):
         
         db = load_db()
         active_users = db.get('active_users', [])
+        user_tokens = db.get('user_tokens', {})
+        user_heartbeats = db.get('user_heartbeats', {})
         
         # 從活躍用戶列表中移除
         if user_id in active_users:
             active_users.remove(user_id)
             db['active_users'] = active_users
+
+            # 清除用戶相關的 token 和心跳記錄
+            if user_id in user_tokens:
+                del user_tokens[user_id]
+            if user_id in user_heartbeats:
+                del user_heartbeats[user_id]
+            
+            db['user_tokens'] = user_tokens
+            db['user_heartbeats'] = user_heartbeats
+            
+            # 保存更新到資料庫
             save_db(db)
         
         return jsonify({
             'success': True
         })
+    
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
         })
-
+    
 # 處理用戶心跳
 def handle_user_heartbeat(data):
     try:
@@ -881,15 +896,15 @@ init_db()
 
 if __name__ == '__main__':
 
-    # 啟動服務器
-    port = int(os.environ.get('PORT', 5000))
-    print(f"服務器運行在 http://localhost:{port}")
-    print('請將前端API_URL更新為此地址')
-
-    # # 啟動服務器，設定端口為 24068
-    # port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
-    # print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
+    # # 啟動服務器
+    # port = int(os.environ.get('PORT', 5000))
+    # print(f"服務器運行在 http://localhost:{port}")
     # print('請將前端API_URL更新為此地址')
+
+    # 啟動服務器，設定端口為 24068
+    port = int(os.environ.get('PORT', 24068))  # 預設端口改為 24068
+    print(f"服務器運行在 http://ouo.freeserver.tw:{port}")
+    print('請將前端API_URL更新為此地址')
     
     # 設置定期清理過期用戶ID的任務
     import threading
