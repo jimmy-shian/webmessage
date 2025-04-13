@@ -52,9 +52,10 @@ def init_db():
                 }
             ],
             "channels": [
-                {"id": "channel1", "name": "頻道 1"},
-                {"id": "channel2", "name": "頻道 2"}
+                {"id": "channel1", "name": "頻道 1", "has_password": False},
+                {"id": "channel2", "name": "頻道 2", "has_password": False}
             ],
+            "channel_passwords": {},
             "placard": [{"announcement": "歡迎使用聊天應用！"}],
             "active_users": [],
             "user_tokens": {},
@@ -245,6 +246,61 @@ def handle_get_request():
             'error': str(e)
         })
 
+# 驗證頻道密碼
+def verify_channel_password(data):
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+        
+        channel_id = data.get('channelId')
+        password = data.get('password')
+        
+        if not channel_id or not password:
+            return jsonify({
+                'success': False,
+                'error': '頻道ID和密碼不能為空'
+            })
+        
+        db = load_db()
+        
+        # 檢查頻道是否存在
+        channel_exists = False
+        for channel in db.get('channels', []):
+            if channel.get('id') == channel_id:
+                channel_exists = True
+                break
+        
+        if not channel_exists:
+            return jsonify({
+                'success': False,
+                'error': '頻道不存在'
+            })
+        
+        # 檢查密碼是否正確
+        channel_passwords = db.get('channel_passwords', {})
+        correct_password = channel_passwords.get(channel_id)
+        
+        if not correct_password:
+            return jsonify({
+                'success': False,
+                'error': '此頻道不需要密碼'
+            })
+        
+        if password == correct_password:
+            return jsonify({
+                'success': True
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '密碼不正確'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 # 處理POST請求
 def handle_post_request():
     try:
@@ -284,6 +340,8 @@ def handle_post_request():
             return update_channel(data)
         elif action == 'deleteChannel':
             return delete_channel(data)
+        elif action == 'getChannelPassword':
+            return get_channel_password(data, session_id)
         elif action == 'updateAnnouncement':
             return update_announcement(data)
         elif action == 'registerUserId':
@@ -294,6 +352,8 @@ def handle_post_request():
             return handle_user_heartbeat(data)
         elif action == 'deleteMessage':
             return delete_message(data, session_id)
+        elif action == 'verifyChannelPassword':
+            return verify_channel_password(data)
         else:
             return jsonify({
                 'success': False,
@@ -472,6 +532,24 @@ def get_channels():
             'error': str(e)
         })
 
+# 生成隨機密碼 (5個數字和5個英文字母)
+def generate_random_password():
+    import random
+    import string
+    
+    # 生成5個隨機數字
+    digits = ''.join(random.choices(string.digits, k=5))
+    
+    # 生成5個隨機英文字母 (大小寫混合)
+    letters = ''.join(random.choices(string.ascii_letters, k=5))
+    
+    # 合併並打亂順序
+    password_chars = list(digits + letters)
+    random.shuffle(password_chars)
+    password = ''.join(password_chars)
+    
+    return password
+
 # 添加新頻道
 def add_channel(channel_data):
     try:
@@ -480,6 +558,7 @@ def add_channel(channel_data):
         
         channel_id = channel_data.get('id')
         name = channel_data.get('name')
+        has_password = channel_data.get('has_password', False)
         db = load_db()
         
         # 檢查頻道ID是否已存在
@@ -491,15 +570,24 @@ def add_channel(channel_data):
                 })
         
         # 添加新頻道
-        db['channels'].append({'id': channel_id, 'name': name})
+        db['channels'].append({'id': channel_id, 'name': name, 'has_password': has_password})
         
         # 創建新頻道的消息集合
         db[f"{channel_id}_message"] = []
         
+        # 如果需要密碼，生成並保存密碼
+        password = None
+        if has_password:
+            password = generate_random_password()
+            if 'channel_passwords' not in db:
+                db['channel_passwords'] = {}
+            db['channel_passwords'][channel_id] = password
+        
         save_db(db)
         
         return jsonify({
-            'success': True
+            'success': True,
+            'password': password
         })
     except Exception as e:
         return jsonify({
@@ -515,13 +603,40 @@ def update_channel(channel_data):
         
         channel_id = channel_data.get('id')
         name = channel_data.get('name')
+        has_password = channel_data.get('has_password')
         db = load_db()
+        
+        # 不允許為預設頻道設置密碼
+        if channel_id in ['channel1', 'channel2'] and has_password:
+            return jsonify({
+                'success': False,
+                'error': '不能為預設頻道設置密碼'
+            })
         
         # 查找頻道
         channel_found = False
         for channel in db.get('channels', []):
             if channel.get('id') == channel_id:
                 channel['name'] = name
+                
+                # 如果有密碼設置變更
+                if has_password is not None:
+                    old_has_password = channel.get('has_password', False)
+                    channel['has_password'] = has_password
+                    
+                    # 如果從無密碼變為有密碼，生成新密碼
+                    password = None
+                    if not old_has_password and has_password:
+                        password = generate_random_password()
+                        if 'channel_passwords' not in db:
+                            db['channel_passwords'] = {}
+                        db['channel_passwords'][channel_id] = password
+                    
+                    # 如果從有密碼變為無密碼，刪除密碼
+                    if old_has_password and not has_password:
+                        if 'channel_passwords' in db and channel_id in db['channel_passwords']:
+                            del db['channel_passwords'][channel_id]
+                
                 channel_found = True
                 break
         
@@ -534,7 +649,13 @@ def update_channel(channel_data):
         save_db(db)
         
         return jsonify({
-            'success': True
+            'success': True,
+            'password': password if 'password' in locals() else None
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
         })
     except Exception as e:
         return jsonify({
@@ -578,10 +699,68 @@ def delete_channel(channel_data):
         if f"{channel_id}_message" in db:
             del db[f"{channel_id}_message"]
         
+        # 刪除頻道密碼
+        if 'channel_passwords' in db and channel_id in db['channel_passwords']:
+            del db['channel_passwords'][channel_id]
+        
         save_db(db)
         
         return jsonify({
             'success': True
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# 獲取頻道密碼（僅管理員可見）
+def get_channel_password(channel_data, session_id):
+    try:
+        # 檢查管理員會話
+        if not validate_admin_session(session_id):
+            return jsonify({
+                'success': False,
+                'error': '管理員會話無效或已過期'
+            })
+            
+        if isinstance(channel_data, str):
+            channel_data = json.loads(channel_data)
+        
+        channel_id = channel_data.get('id')
+        db = load_db()
+        
+        # 檢查頻道是否存在
+        channel_found = False
+        for channel in db.get('channels', []):
+            if channel.get('id') == channel_id:
+                channel_found = True
+                if not channel.get('has_password', False):
+                    return jsonify({
+                        'success': False,
+                        'error': '此頻道沒有設置密碼'
+                    })
+                break
+        
+        if not channel_found:
+            return jsonify({
+                'success': False,
+                'error': '頻道不存在'
+            })
+        
+        # 獲取頻道密碼
+        channel_passwords = db.get('channel_passwords', {})
+        password = channel_passwords.get(channel_id)
+        
+        if not password:
+            return jsonify({
+                'success': False,
+                'error': '找不到頻道密碼'
+            })
+        
+        return jsonify({
+            'success': True,
+            'password': password
         })
     except Exception as e:
         return jsonify({
@@ -628,15 +807,10 @@ def check_user_id(user_id, user_token=None):
         if exists and user_token and user_id in user_tokens:
             exists = (user_tokens[user_id] == user_token)
         
-            return jsonify({
-                'success': True,
-                'exists': False
-            })
-        else:
-            return jsonify({
-               'success': True,
-                'exists': exists
-            })
+        return jsonify({
+            'success': True,
+            'exists': exists
+        })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -908,14 +1082,14 @@ if __name__ == '__main__':
     
     # 設置定期清理過期用戶ID的任務
     import threading
-    def cleanup_task():
-        while True:
-            cleanup_expired_users()
-            time.sleep(75)  # 每分鐘檢查一次
+    # def cleanup_task():
+    #     while True:
+    #         cleanup_expired_users()
+    #         time.sleep(75)  # 每分鐘檢查一次
     
-    # 啟動清理線程
-    cleanup_thread = threading.Thread(target=cleanup_task)
-    cleanup_thread.daemon = True  # 設置為守護線程，主程序結束時自動結束
-    cleanup_thread.start()
+    # # 啟動清理線程
+    # cleanup_thread = threading.Thread(target=cleanup_task)
+    # cleanup_thread.daemon = True  # 設置為守護線程，主程序結束時自動結束
+    # cleanup_thread.start()
     
     app.run(host='0.0.0.0', port=port, debug=True)

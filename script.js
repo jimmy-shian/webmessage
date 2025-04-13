@@ -14,6 +14,7 @@ let channels = [
     { id: 'channel2', name: '頻道 2' }
 ];
 let isThemeMenuOpen = false;
+let checkpasswordflag = false;
 
 // 用於跟踪頻道未讀狀態
 let channelUnreadStatus = {};
@@ -200,6 +201,39 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEmojiPicker();
     setupChannelToggle();
     
+    // 設置密碼選項變更事件
+    document.getElementById('channel-password-option').addEventListener('change', function(e) {
+        const submitButton = document.querySelector('#channel-form button[type="submit"]');
+        const passwordDisplayGroup = document.getElementById('password-display-group');
+        
+        if (e.target.checked && passwordDisplayGroup.classList.contains('hidden')) {
+            submitButton.innerHTML = '產生密碼';
+        } else if (!e.target.checked) {
+            passwordDisplayGroup.classList.add('hidden');
+            submitButton.innerHTML = '儲存';
+        }
+    });
+    
+    // 設置複製密碼按鈕
+    document.getElementById('copy-password-btn').addEventListener('click', function() {
+        copyPassword(); // 預設會找 id 為 'channel-password-display' 的欄位
+    });
+    function copyPassword(displayId = 'channel-password-display') {
+        const passwordDisplay = document.getElementById(displayId);
+        if (!passwordDisplay) {
+            showNotification('找不到密碼欄位', 'error');
+            return;
+        }
+    
+        navigator.clipboard.writeText(passwordDisplay.value)
+            .then(() => {
+                showNotification('密碼已複製到剪貼簿', 'success');
+            })
+            .catch(err => {
+                showNotification('無法複製密碼: ' + err, 'error');
+            });
+    }
+        
     
     loadChannels();
     loadAnnouncement();
@@ -744,17 +778,17 @@ function setupEventListeners() {
         });
     });
     // 點擊其他地方關閉管理員登錄菜單
-    document.addEventListener('click', (e) => {
-        const notificationSettingsMenus = document.getElementsByClassName('modal-content');
-        const notificationSettingsToggle = document.getElementById('admin-login');
+    // document.addEventListener('click', (e) => {
+    //     const notificationSettingsMenus = document.getElementsByClassName('modal-content');
+    //     const notificationSettingsToggle = document.getElementById('admin-login');
         
-        // 遍歷所有 modal-content 元素
-        Array.from(notificationSettingsMenus).forEach(menu => {
-            if (!menu.contains(e.target) && e.target !== notificationSettingsToggle && !notificationSettingsToggle.contains(e.target)) {
-                menu.closest('.modal').classList.add('hidden');
-            }
-        });
-    });
+    //     // 遍歷所有 modal-content 元素
+    //     Array.from(notificationSettingsMenus).forEach(menu => {
+    //         if (!menu.contains(e.target) && e.target !== notificationSettingsToggle && !notificationSettingsToggle.contains(e.target)) {
+    //             menu.closest('.modal').classList.add('hidden');
+    //         }
+    //     });
+    // });
     
     
     // 添加公告編輯按鈕（僅管理員可見）
@@ -1391,19 +1425,42 @@ function addChannel(channelName, submitButton) {
     // 生成唯一ID
     const channelId = 'channel' + (channels.length + 1);
     
+    // 檢查是否需要密碼
+    const hasPassword = document.getElementById('channel-password-option').checked;
+    
     // 使用jQuery的$.post方法發送請求
     $.post(API_URL, {
         action: 'addChannel',
-        data: `{ "id": "${channelId}", "name": "${channelName}" }`,
+        data: JSON.stringify({ 
+            id: channelId, 
+            name: channelName,
+            has_password: hasPassword
+        }),
         sessionId: adminSessionId
     })
     .done(function(data) {
         if (data.success) {
             // 更新本地頻道列表
-            channels.push({ id: channelId, name: channelName });
+            channels.push({ id: channelId, name: channelName, has_password: hasPassword });
             updateChannelList();
-            document.getElementById('channel-modal').classList.add('hidden');
-            showNotification('頻道添加成功！', 'success');
+            
+            // 如果有密碼，顯示密碼並提示複製
+            if (hasPassword && data.password) {
+                document.getElementById('channel-password-display').value = data.password;
+                document.getElementById('password-display-group').classList.remove('hidden');
+                // 更改按鈕文字為「複製並關閉」
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '複製並關閉';
+                }
+                copyPassword(); // 預設會找 id 為 'channel-password-display' 的欄位
+
+                // 不自動關閉模態框，等用戶複製密碼
+                showNotification('頻道添加成功！請複製並保存密碼，關閉後將無法再次查看', 'success');
+            } else {
+                document.getElementById('channel-modal').classList.add('hidden');
+                showNotification('頻道添加成功！', 'success');
+            }
         } else {
             showNotification('添加頻道失敗：' + (data.error || '未知錯誤'), 'error');
         }
@@ -1413,8 +1470,8 @@ function addChannel(channelName, submitButton) {
         showNotification('添加頻道請求失敗，請稍後再試', 'error');
     })
     .always(function() {
-        // 恢復按鈕狀態
-        if (submitButton) {
+        // 恢復按鈕狀態，只有在沒有顯示密碼的情況下才恢復按鈕狀態
+        if (submitButton && document.getElementById('password-display-group').classList.contains('hidden')) {
             submitButton.disabled = false;
             submitButton.innerHTML = '儲存';
         }
@@ -1423,10 +1480,17 @@ function addChannel(channelName, submitButton) {
 
 // 更新頻道
 function updateChannel(channelId, channelName, submitButton) {
+    // 檢查是否需要密碼
+    const hasPassword = document.getElementById('channel-password-option').checked;
+    
     // 使用jQuery的$.post方法發送請求
     $.post(API_URL, {
         action: 'updateChannel',
-        data: `{ "id": "${channelId}", "name": "${channelName}" }`,
+        data: JSON.stringify({
+            id: channelId,
+            name: channelName,
+            has_password: hasPassword
+        }),
         sessionId: adminSessionId
     })
     .done(function(data) {
@@ -1435,10 +1499,25 @@ function updateChannel(channelId, channelName, submitButton) {
             const channelIndex = channels.findIndex(c => c.id === channelId);
             if (channelIndex !== -1) {
                 channels[channelIndex].name = channelName;
+                channels[channelIndex].has_password = hasPassword;
                 updateChannelList();
             }
-            document.getElementById('channel-modal').classList.add('hidden');
-            showNotification('頻道更新成功！', 'success');
+            
+            // 如果有新生成的密碼，顯示密碼並提示複製
+            if (data.password) {
+                document.getElementById('channel-password-display').value = data.password;
+                document.getElementById('password-display-group').classList.remove('hidden');
+                // 更改按鈕文字為「複製並關閉」
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '複製並關閉';
+                }
+                // 不自動關閉模態框，等用戶複製密碼
+                showNotification('頻道更新成功！請複製並保存密碼，關閉後將無法再次查看', 'success');
+            } else {
+                document.getElementById('channel-modal').classList.add('hidden');
+                showNotification('頻道更新成功！', 'success');
+            }
         } else {
             showNotification('更新頻道失敗：' + (data.error || '未知錯誤'), 'error');
         }
@@ -1448,13 +1527,14 @@ function updateChannel(channelId, channelName, submitButton) {
         showNotification('更新頻道請求失敗，請稍後再試', 'error');
     })
     .always(function() {
-        // 恢復按鈕狀態
-        if (submitButton) {
+        // 恢復按鈕狀態，只有在沒有顯示密碼的情況下才恢復按鈕狀態
+        if (submitButton && document.getElementById('password-display-group').classList.contains('hidden')) {
             submitButton.disabled = false;
             submitButton.innerHTML = '儲存';
         }
     });
 }
+
 
 // 顯示編輯公告模態框
 function showAnnouncementModal() {
@@ -1848,7 +1928,17 @@ function updateChannelList() {
         // 創建頻道名稱容器
         const channelNameContainer = document.createElement('span');
         channelNameContainer.classList.add('channel-name');
-        channelNameContainer.textContent = channel.name;
+        
+        // 如果頻道需要密碼，添加鎖頭圖標
+        if (channel.has_password) {
+            const lockIcon = document.createElement('i');
+            lockIcon.className = 'fas fa-lock';
+            lockIcon.style.marginRight = '5px';
+            lockIcon.title = '此頻道需要密碼';
+            channelNameContainer.appendChild(lockIcon);
+        }
+        
+        channelNameContainer.appendChild(document.createTextNode(channel.name));
         channelElement.appendChild(channelNameContainer);
         
         // 添加未讀指示器
@@ -1864,7 +1954,12 @@ function updateChannelList() {
         }
         
         channelElement.addEventListener('click', () => {
-            switchChannel(channel.id);
+            // 檢查頻道是否需要密碼
+            if (channel.has_password) {
+                showPasswordModal(channel.id);
+            } else {
+                switchChannel(channel.id);
+            }
         });
         
         channelList.appendChild(channelElement);
@@ -1875,6 +1970,91 @@ function updateChannelList() {
     
     // 更新未讀指示器
     updateUnreadIndicators();
+}
+
+// 顯示密碼驗證模態框
+function showPasswordModal(channelId) {
+    const passwordModal = document.getElementById('password-modal');
+    const passwordChannelId = document.getElementById('password-channel-id');
+    const passwordInput = document.getElementById('channel-password');
+    
+    // 設置要切換的頻道ID
+    passwordChannelId.value = channelId;
+    
+    // 檢查localStorage中是否有保存的密碼
+    const savedPasswords = JSON.parse(localStorage.getItem('channelPasswords') || '{}');
+    const savedPassword = savedPasswords[channelId];
+    
+    if (savedPassword && !checkpasswordflag) {
+        // 自動填入保存的密碼
+        passwordInput.value = savedPassword;
+        // 自動提交表單進行驗證
+        setTimeout(() => {
+            document.getElementById('password-form').dispatchEvent(new Event('submit'));
+        }, 100);
+        return;
+    }
+    
+    // 清空密碼輸入框
+    passwordInput.value = '';
+    
+    // 顯示模態框
+    passwordModal.classList.remove('hidden');
+    
+    // 聚焦密碼輸入框
+    passwordInput.focus();
+}
+
+// 處理密碼驗證表單提交
+document.getElementById('password-form').addEventListener('submit', handlePasswordForm);
+
+// 處理密碼驗證表單提交
+function handlePasswordForm(e) {
+    e.preventDefault();
+    
+    const channelId = document.getElementById('password-channel-id').value;
+    const password = document.getElementById('channel-password').value;
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    
+    // 禁用按鈕並顯示載入狀態
+    submitButton.disabled = true;
+    submitButton.innerHTML = '驗證中...';
+    
+    // 發送密碼驗證請求
+    $.post(API_URL, {
+        action: 'verifyChannelPassword',
+        data: JSON.stringify({
+            channelId: channelId,
+            password: password
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            // 密碼正確，保存到localStorage
+            const savedPasswords = JSON.parse(localStorage.getItem('channelPasswords') || '{}');
+            savedPasswords[channelId] = password;
+            localStorage.setItem('channelPasswords', JSON.stringify(savedPasswords));
+            
+            // 切換頻道
+            document.getElementById('password-modal').classList.add('hidden');
+            checkpasswordflag = false;
+            switchChannel(channelId);
+        } else {
+            // 密碼錯誤，顯示錯誤訊息
+            showNotification('密碼驗證失敗：' + (data.error || '密碼不正確'), 'error');
+            checkpasswordflag = true;
+            showPasswordModal(channelId)
+        }
+    })
+    .fail(function(error) {
+        console.error('密碼驗證錯誤:', error);
+        showNotification('密碼驗證請求失敗，請稍後再試', 'error');
+    })
+    .always(function() {
+        // 恢復按鈕狀態
+        submitButton.disabled = false;
+        submitButton.innerHTML = '驗證';
+    });
 }
 
 // 顯示添加頻道模態框
@@ -1890,6 +2070,35 @@ function showEditChannelModal(channel) {
     document.getElementById('channel-modal-title').textContent = '編輯頻道';
     document.getElementById('channel-name').value = channel.name;
     document.getElementById('channel-id').value = channel.id;
+    
+    // 設置密碼選項狀態
+    const passwordOption = document.getElementById('channel-password-option');
+    passwordOption.checked = channel.has_password;
+    
+    // 如果頻道已有密碼，顯示密碼區域
+    if (channel.has_password) {
+        // 向服務器請求頻道密碼（僅管理員可見）
+        $.post(API_URL, {
+            action: 'getChannelPassword',
+            data: JSON.stringify({
+                id: channel.id
+            }),
+            sessionId: adminSessionId
+        })
+        .done(function(data) {
+            if (data.success && data.password) {
+                document.getElementById('channel-password-display').value = data.password;
+                document.getElementById('password-display-group').classList.remove('hidden');
+                // 更改按鈕文字為「複製並關閉」
+                const submitButton = document.querySelector('#channel-form button[type="submit"]');
+                submitButton.innerHTML = '複製並關閉';
+            }
+        });
+    } else {
+        // 隱藏密碼區域
+        document.getElementById('password-display-group').classList.add('hidden');
+    }
+    
     document.getElementById('channel-modal').classList.remove('hidden');
 }
 
@@ -1900,6 +2109,33 @@ function handleChannelForm(e) {
     const submitButton = document.querySelector('#channel-form button[type="submit"]');
     const channelName = document.getElementById('channel-name').value;
     const channelId = document.getElementById('channel-id').value;
+    const passwordOption = document.getElementById('channel-password-option');
+    const passwordDisplayGroup = document.getElementById('password-display-group');
+    
+    // 如果勾選了需要密碼，但密碼尚未生成
+    if (passwordOption.checked && passwordDisplayGroup.classList.contains('hidden')) {
+        // 更改按鈕文字為「產生密碼」
+        submitButton.innerHTML = '產生密碼';
+        submitButton.disabled = false;
+        // return;
+    }
+    
+    // 如果密碼已生成且顯示中
+    if (!passwordDisplayGroup.classList.contains('hidden')) {
+        // 複製密碼並關閉模態框
+        const passwordDisplay = document.getElementById('channel-password-display');
+        navigator.clipboard.writeText(passwordDisplay.value)
+            .then(() => {
+                showNotification('密碼已複製到剪貼簿', 'success');
+                document.getElementById('channel-modal').classList.add('hidden');
+                passwordDisplayGroup.classList.add('hidden');
+                submitButton.innerHTML = '儲存';
+            })
+            .catch(err => {
+                showNotification('無法複製密碼: ' + err, 'error');
+            });
+        return;
+    }
     
     // 禁用按鈕並顯示加載狀態
     submitButton.disabled = true;
