@@ -24,7 +24,7 @@ python app.py
 需要修改前端的API_URL以指向新的後端服務器。在script.js文件中找到以下行：
 
 ```javascript
-const API_URL = 'https://script.google.com/macros/s/AKfycbyRkTVHepbhkMbyf-t0GMV-lIhes7BwgDJwBf2AYqzL_98u-jjRe90K9Z35M6FC-i3mmg/exec';
+const API_URL = "http://ouo.freeserver.tw:24068";
 ```
 
 將其修改為：

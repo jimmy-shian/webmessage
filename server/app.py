@@ -1082,14 +1082,14 @@ if __name__ == '__main__':
     
     # 設置定期清理過期用戶ID的任務
     import threading
-    # def cleanup_task():
-    #     while True:
-    #         cleanup_expired_users()
-    #         time.sleep(75)  # 每分鐘檢查一次
+    def cleanup_task():
+        while True:
+            cleanup_expired_users()
+            time.sleep(75)  # 每分鐘檢查一次
     
-    # # 啟動清理線程
-    # cleanup_thread = threading.Thread(target=cleanup_task)
-    # cleanup_thread.daemon = True  # 設置為守護線程，主程序結束時自動結束
-    # cleanup_thread.start()
+    # 啟動清理線程
+    cleanup_thread = threading.Thread(target=cleanup_task)
+    cleanup_thread.daemon = True  # 設置為守護線程，主程序結束時自動結束
+    cleanup_thread.start()
     
     app.run(host='0.0.0.0', port=port, debug=True)

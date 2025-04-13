@@ -67,7 +67,7 @@ node update_api_url.js 2  # 使用Python服務器
 
 ```javascript
 // 將此行
-const API_URL = 'https://script.google.com/macros/s/AKfycbyRkTVHepbhkMbyf-t0GMV-lIhes7BwgDJwBf2AYqzL_98u-jjRe90K9Z35M6FC-i3mmg/exec';
+const API_URL = "http://ouo.freeserver.tw:24068";
 
 // 修改為
 const API_URL = 'http://localhost:3000';  // Node.js版本
