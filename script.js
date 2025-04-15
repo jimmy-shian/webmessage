@@ -14,7 +14,7 @@ let channels = [
     { id: 'channel2', name: '頻道 2' }
 ];
 let isThemeMenuOpen = false;
-let checkpasswordflag = false;
+let checkpasswordflag = true;
 
 // 用於跟踪頻道未讀狀態
 let channelUnreadStatus = {};
@@ -1010,6 +1010,28 @@ function setFontSize(size) {
 
 // 切換頻道
 function switchChannel(channelId) {
+    if( channelId == currentChannel){
+        // 更新頻道標題顯示當前選擇的頻道名稱
+        updateChannelHeader();
+        
+        // 在手機版中選擇頻道後自動收合頻道列表
+        if (window.innerWidth <= 576) {
+            const channelsContainer = document.querySelector('.channels');
+            const toggleButton = document.getElementById('toggle-channels');
+            channelsContainer.classList.add('collapsed');
+            toggleButton.classList.add('collapsed');
+        }
+        
+        // 清除該頻道的未讀狀態
+        channelUnreadStatus[channelId] = false;
+        
+        // 更新未讀指示器
+        updateUnreadIndicators();
+        
+        // 載入新頻道的消息
+        loadMessages();
+        return;
+    }
     // 取消之前的請求
     if (currentMessageController) {
         currentMessageController.abort();
@@ -1203,9 +1225,10 @@ function loadMessages() {
     }
     const currentChannelData = channels.find(channel => channel.id === currentChannel);
 
-    if (currentChannelData && currentChannelData.has_password) {
+    if (currentChannelData && currentChannelData.has_password && checkpasswordflag) {
         showPasswordModal(currentChannel);
-        currentChannel = "channel1"; // 重設或導回安全頻道
+        currentChannel = "channel1"
+        return;
     }
     
     // 創建新的AbortController
@@ -1996,7 +2019,7 @@ function showPasswordModal(channelId) {
     const savedPasswords = JSON.parse(localStorage.getItem('channelPasswords') || '{}');
     const savedPassword = savedPasswords[channelId];
     
-    if (savedPassword && !checkpasswordflag) {
+    if (savedPassword || !checkpasswordflag) {
         // 自動填入保存的密碼
         passwordInput.value = savedPassword;
         // 自動提交表單進行驗證
@@ -2023,8 +2046,10 @@ document.getElementById('password-form').addEventListener('submit', handlePasswo
 function handlePasswordForm(e) {
     e.preventDefault();
     
-    const channelId = document.getElementById('password-channel-id').value;
-    const password = document.getElementById('channel-password').value;
+    const channelId = document.getElementById('password-channel-id').value || currentChannel;
+    const savedPasswords = JSON.parse(localStorage.getItem('channelPasswords') || '{}');
+    const password = savedPasswords[channelId] || document.getElementById('channel-password').value;
+    
     const submitButton = e.target.querySelector('button[type="submit"]');
     
     // 禁用按鈕並顯示載入狀態
@@ -2046,13 +2071,17 @@ function handlePasswordForm(e) {
             savedPasswords[channelId] = password;
             localStorage.setItem('channelPasswords', JSON.stringify(savedPasswords));
             
+            checkpasswordflag = false;
             // 切換頻道
             document.getElementById('password-modal').classList.add('hidden');
-            checkpasswordflag = false;
             switchChannel(channelId);
         } else {
             // 密碼錯誤，顯示錯誤訊息
             showNotification('密碼驗證失敗：' + (data.error || '密碼不正確'), 'error');
+            const savedPasswords = JSON.parse(localStorage.getItem('channelPasswords') || '{}');
+            savedPasswords[channelId] = "";
+            localStorage.setItem('channelPasswords', JSON.stringify(savedPasswords));
+
             checkpasswordflag = true;
             showPasswordModal(channelId)
         }
