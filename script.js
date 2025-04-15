@@ -1201,6 +1201,12 @@ function loadMessages() {
     if (currentMessageController) {
         currentMessageController.abort();
     }
+    const currentChannelData = channels.find(channel => channel.id === currentChannel);
+
+    if (currentChannelData && currentChannelData.has_password) {
+        showPasswordModal(currentChannel);
+        currentChannel = "channel1"; // 重設或導回安全頻道
+    }
     
     // 創建新的AbortController
     currentMessageController = new AbortController();
@@ -1208,7 +1214,6 @@ function loadMessages() {
     
     // 保存當前請求的頻道ID，用於檢查請求完成時頻道是否已經改變
     const requestChannelId = currentChannel;
-    
     // 使用fetch API代替jQuery的$.get，以支持AbortController
     fetch(`${API_URL}?action=getMessages&channel=${requestChannelId}`, {
         method: 'GET',
@@ -1981,6 +1986,12 @@ function showPasswordModal(channelId) {
     // 設置要切換的頻道ID
     passwordChannelId.value = channelId;
     
+    // 🔍 找出頻道名稱並修改顯示文字
+    const channel = channels.find(c => c.id === channelId);
+    const channelName = channel ? channel.name : '此頻道';
+    const modalText = document.querySelector('#password-modal p');
+    modalText.textContent = `${channelName} 需要密碼才能訪問`;
+
     // 檢查localStorage中是否有保存的密碼
     const savedPasswords = JSON.parse(localStorage.getItem('channelPasswords') || '{}');
     const savedPassword = savedPasswords[channelId];
@@ -2122,20 +2133,29 @@ function handleChannelForm(e) {
     
     // 如果密碼已生成且顯示中
     if (!passwordDisplayGroup.classList.contains('hidden')) {
-        // 複製密碼並關閉模態框
         const passwordDisplay = document.getElementById('channel-password-display');
-        navigator.clipboard.writeText(passwordDisplay.value)
-            .then(() => {
-                showNotification('密碼已複製到剪貼簿', 'success');
-                document.getElementById('channel-modal').classList.add('hidden');
-                passwordDisplayGroup.classList.add('hidden');
-                submitButton.innerHTML = '儲存';
-            })
-            .catch(err => {
-                showNotification('無法複製密碼: ' + err, 'error');
-            });
+    
+        // 檢查 Clipboard API 是否可用（在 HTTPS 上才可用）
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(passwordDisplay.value)
+                .then(() => {
+                    showNotification('密碼已複製到剪貼簿', 'success');
+                    document.getElementById('channel-modal').classList.add('hidden');
+                    passwordDisplayGroup.classList.add('hidden');
+                    submitButton.innerHTML = '儲存';
+                })
+                .catch(err => {
+                    showNotification('無法複製密碼: ' + err, 'error');
+                });
+        } else {
+            // 提示使用者手動複製
+            showNotification('請手動複製密碼', 'info');
+            passwordDisplay.select(); // 自動選取密碼文字
+        }
+    
         return;
     }
+    
     
     // 禁用按鈕並顯示加載狀態
     submitButton.disabled = true;
