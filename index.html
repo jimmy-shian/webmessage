@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}"  onerror="this.href='img/chat1.jpg'">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" onerror="this.href='style.css'">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.min.css') }}" onerror="this.href='style.css'">
 
 </head>
 <body class="theme-light">
@@ -188,7 +188,7 @@
     <script src="https://cdn.jsdelivr.net/npm/emoji-toolkit@7.0.0/lib/js/joypixels.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
-    <script src="{{ url_for('static', filename='markdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='markdown.min.js') }}"></script>
     <script>
         if (typeof Markdown === 'undefined') {
             // 若 markdown.js 沒成功載入，就 fallback 成備用路徑
@@ -196,7 +196,7 @@
         }
     </script>
     
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.min.js') }}"></script>
     <script>
         if (typeof someGlobalFunctionOrVar === 'undefined') {
             document.write('<script src="/script.js"><\/script>');
