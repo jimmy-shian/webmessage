@@ -191,24 +191,29 @@ def get_new_announcement(db=None):
     last_pushed_data['announcement'] = announcement
     return announcement
 
+TRUEFLAG = False
 # SSE事件流路由
 @app.route('/events')
 def sse_stream():
     def event_stream():
         while True:
+            global TRUEFLAG
             try:
                 db = None
                 # 檢查是否有新消息、頻道或公告更新
-                # if has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
-                messages, active_users = get_new_messages(db)
-                data = {
-                    'messages': messages,
-                    'active_users': active_users,
-                    'channels': get_new_channels(db),
-                    'announcement': get_new_announcement(db)
-                }
-                yield f"data: {json.dumps(data)}\n\n"
-                time.sleep(2)
+                if TRUEFLAG or has_new_message(db) or has_new_channel(db) or has_new_announcement(db):
+                    messages, active_users = get_new_messages(db)
+                    data = {
+                        'messages': messages,
+                        'active_users': active_users,
+                        'channels': get_new_channels(db),
+                        'announcement': get_new_announcement(db)
+                    }
+                    print(f"[SSE] 發送推播")
+                    yield f"data: {json.dumps(data)}\n\n"
+                    TRUEFLAG = False
+                time.sleep(1)
+
             except Exception as e:
                 print(f"SSE推送錯誤: {e}")
                 time.sleep(10)  # 錯誤時等待更長時間
@@ -224,14 +229,18 @@ def handle_request():
 
 # 處理GET請求
 def handle_get_request():
+    global TRUEFLAG
     action = request.args.get('action')
     
     try:
         if action == 'getMessages':
+            TRUEFLAG = True
             return get_messages()
         elif action == 'getAnnouncement':
+            TRUEFLAG = True
             return get_announcement()
         elif action == 'getChannels':
+            TRUEFLAG = True
             return get_channels()
         elif action == 'checkUserId':
             return check_user_id(request.args.get('userId'), request.args.get('userToken'))
@@ -303,6 +312,8 @@ def verify_channel_password(data):
 
 # 處理POST請求
 def handle_post_request():
+    global TRUEFLAG
+
     try:
         # 嘗試從JSON和表單數據獲取參數
         if request.is_json:
@@ -327,6 +338,7 @@ def handle_post_request():
         print("action: ", action)
 
         if action == 'sendMessage':
+            TRUEFLAG = True
             return send_message(data)
         elif action == 'adminLogin':
             return admin_login(data)
@@ -335,22 +347,29 @@ def handle_post_request():
         elif action == 'checkAdminSession':
             return check_admin_session(session_id)
         elif action == 'addChannel':
+            TRUEFLAG = True
             return add_channel(data)
         elif action == 'updateChannel':
+            TRUEFLAG = True
             return update_channel(data)
         elif action == 'deleteChannel':
+            TRUEFLAG = True
             return delete_channel(data)
         elif action == 'getChannelPassword':
             return get_channel_password(data, session_id)
         elif action == 'updateAnnouncement':
+            TRUEFLAG = True
             return update_announcement(data)
         elif action == 'registerUserId':
+            TRUEFLAG = True
             return register_user_id(data)
         elif action == 'releaseUserId':
+            TRUEFLAG = True
             return release_user_id(data)
         elif action == 'userHeartbeat':
             return handle_user_heartbeat(data)
         elif action == 'deleteMessage':
+            TRUEFLAG = True
             return delete_message(data, session_id)
         elif action == 'verifyChannelPassword':
             return verify_channel_password(data)
