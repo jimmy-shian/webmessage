@@ -28,11 +28,46 @@
                     <div id="format-help-menu" class="format-help-menu hidden">
                         <div class="format-help-title">訊息格式說明</div>
                         <div class="format-help-content">
-                            <p><code>**文字**</code> 或 <code>__文字__</code> - <strong>粗體</strong></p>
-                            <p><code>*文字*</code> 或 <code>_文字_</code> - <em>斜體</em></p>
-                            <p><code>~~文字~~</code> - <del>刪除線</del></p>
-                            <p><code>`文字`</code> - <code>程式碼</code></p>
-                            <p><code>||文字||</code> - <span class="spoiler">隱藏文字</span> (點擊顯示)</p>
+                            <div class="format-section">
+                                <h4>文字格式</h4>
+                                <p><code>**粗體**</code> 或 <code>__粗體__</code> - <strong>粗體文字</strong></p>
+                                <p><code>*斜體*</code> 或 <code>_斜體_</code> - <em>斜體文字</em></p>
+                                <p><code>~~刪除線~~</code> - <del>刪除線文字</del></p>
+                                <p><code>||隱藏||</code> - <span class="spoiler">隱藏文字（點擊顯示）</span></p>
+                                <p><code>`行內代碼`</code> - <code>代碼片段</code></p>
+                            </div>
+                            
+                            <div class="format-section">
+                                <h4>標題</h4>
+                                <p><code># 標題一</code></p>
+                                <p><code>## 標題二</code></p>
+                                <p><code>### 標題三</code></p>
+                            </div>
+                            
+                            <div class="format-section">
+                                <h4>列表</h4>
+                                <p><code>- 無序列表</code></p>
+                                <p><code>1. 有序列表</code></p>
+                            </div>
+                            
+                            <div class="format-section">
+                                <h4>引用與代碼</h4>
+                                <p><code>> 引用文字</code> - <span style="opacity:0.8">引用區塊</span></p>
+                                <p><code>```<br>代碼區塊<br>```</code></p>
+                                <p><code>```javascript<br>// 指定語言<br>console.log('Hello');<br>```</code></p>
+                            </div>
+                            
+                            <div class="format-section">
+                                <h4>連結與圖片</h4>
+                                <p><code>[文字](網址)</code> - <a href="#" style="color: var(--link-color)">超連結</a></p>
+                                <p><code>![替代文字](圖片網址)</code> - 顯示圖片</p>
+                                <p><code>&lt;https://example.com&gt;</code> - 自動轉換為連結</p>
+                            </div>
+                            
+                            <div class="format-section">
+                                <h4>其他</h4>
+                                <p><code>---</code> 或 <code>***</code> - 水平分隔線</p>
+                            </div>
                         </div>
                     </div>
                 </div>

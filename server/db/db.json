@@ -74,12 +74,7 @@
     "7655": "ngnFdPp3KjHG0Tkm",
     "8849": "CXuM3BpWIox3qFcG"
   },
-  "user_heartbeats": {
-    "7655": "2025-04-13T13:24:14.039Z",
-    "8849": "2025-04-13T13:24:49.040Z"
-  },
-  "channel3_message": [],
-  "channel4_message": [],
-  "channel5_message": [],
-  "channel6_message": []
+  "user_heartbeats": {},
+  "channel_passwords": {}
+}rds": {}
 }

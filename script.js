@@ -697,9 +697,30 @@ function setupEventListeners() {
 
     // 發送消息
     document.getElementById('send-button').addEventListener('click', sendMessage);
-    document.getElementById('message-input').addEventListener('keypress', (e) => {
+    // 處理訊息輸入框的按鍵事件
+    const messageInput = document.getElementById('message-input');
+    messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            sendMessage();
+            // 如果按下 Shift+Enter，插入換行
+            if (e.shiftKey) {
+                // 獲取當前光標位置
+                const start = messageInput.selectionStart;
+                const end = messageInput.selectionEnd;
+                
+                // 在光標位置插入換行符
+                messageInput.value = messageInput.value.substring(0, start) + '\n' + messageInput.value.substring(end);
+                
+                // 移動光標到新插入的換行符後
+                const newCursorPos = start + 1;
+                messageInput.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // 阻止默認的 Enter 行為（提交表單）
+                e.preventDefault();
+            } else {
+                // 單獨按下 Enter 時發送訊息
+                e.preventDefault(); // 防止在表單中觸發提交
+                sendMessage();
+            }
         }
     });
     

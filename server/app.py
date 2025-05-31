@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from flask import Flask, request, jsonify, stream_with_context, Response
 from flask_cors import CORS
+import threading
 
 app = Flask(__name__)
 # 開啟所有來源的 CORS，包含 null（檔案直開情況）
@@ -74,11 +75,13 @@ def load_db():
         print(f"加載數據庫錯誤: {e}")
         return init_db()
 
+_db_file_lock = threading.Lock()
 # 保存數據庫
 def save_db(data):
     try:
-        with open(db_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        with _db_file_lock:
+            with open(db_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
         print(f"保存數據庫錯誤: {e}")
@@ -391,7 +394,7 @@ def send_message(message_data):
             message_data = json.loads(message_data)
         
         sender = message_data.get('sender')
-        content = message_data.get('content')
+        content = message_data.get('content', '')[:4096]
         channel = message_data.get('channel')
         timestamp = message_data.get('timestamp')
         
