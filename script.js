@@ -1,6 +1,6 @@
 // 全局变量
 const API_URL = "http://ouo.freeserver.tw:24068";
-// const API_URL = "http://127.0.0.1:5000";
+// const API_URL = "http://127.0.0.1:24068";
 let currentUser = null;
 // 從網址中擷取 channel 參數
 const urlParams = new URLSearchParams(window.location.search);
@@ -699,6 +699,19 @@ function setupEventListeners() {
     document.getElementById('send-button').addEventListener('click', sendMessage);
     // 處理訊息輸入框的按鍵事件
     const messageInput = document.getElementById('message-input');
+
+    // 自動調整 textarea 高度
+    function autoResizeTextarea() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight+2.5, 150) + 'px';
+    }
+
+    window.autoResizeTextarea = autoResizeTextarea;
+    window.addEventListener('resize', autoResizeTextarea);
+    messageInput.addEventListener('input', autoResizeTextarea);
+    // 預設一行高
+    autoResizeTextarea();
+
     messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             // 如果按下 Shift+Enter，插入換行
@@ -706,24 +719,24 @@ function setupEventListeners() {
                 // 獲取當前光標位置
                 const start = messageInput.selectionStart;
                 const end = messageInput.selectionEnd;
-                
                 // 在光標位置插入換行符
                 messageInput.value = messageInput.value.substring(0, start) + '\n' + messageInput.value.substring(end);
-                
                 // 移動光標到新插入的換行符後
                 const newCursorPos = start + 1;
                 messageInput.setSelectionRange(newCursorPos, newCursorPos);
-                
                 // 阻止默認的 Enter 行為（提交表單）
                 e.preventDefault();
+                // 重新調整高度
+                autoResizeTextarea();
             } else {
                 // 單獨按下 Enter 時發送訊息
                 e.preventDefault(); // 防止在表單中觸發提交
                 sendMessage();
             }
         }
+        autoResizeTextarea();
     });
-    
+        
     // 格式幫助切換
     document.getElementById('format-help-toggle').addEventListener('click', toggleFormatHelpMenu);
     
@@ -1130,7 +1143,8 @@ function sendMessage() {
     // 清空輸入框
     messageInput.value = '';
     messageInput.focus();
-    
+    autoResizeTextarea();
+
     // 添加冷卻時間視覺提示
     let cooldownTime = 3;
     const cooldownInterval = setInterval(() => {

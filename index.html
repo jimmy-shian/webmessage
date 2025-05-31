@@ -123,7 +123,7 @@
             <div class="chat-area">
                 <div id="messages" class="messages"></div>
                 <div class="message-input-container">
-                    <input type="text" id="message-input" placeholder="輸入訊息..." autocomplete="off">
+                    <textarea id="message-input" placeholder="輸入訊息..." rows="1"></textarea>
                     <div class="emoji-picker-toggle">
                         <button id="emoji-button"><i class="far fa-smile"></i></button>
                         <div id="emoji-picker" class="emoji-picker hidden">
@@ -227,14 +227,14 @@
     <script>
         if (typeof Markdown === 'undefined') {
             // 若 markdown.js 沒成功載入，就 fallback 成備用路徑
-            document.write('<script src="/markdown.js"><\/script>');
+            document.write('<script src="markdown.js"><\/script>');
         }
     </script>
     
     <script src="{{ url_for('static', filename='script.min.js') }}"></script>
     <script>
         if (typeof someGlobalFunctionOrVar === 'undefined') {
-            document.write('<script src="/script.js"><\/script>');
+            document.write('<script src="script.js"><\/script>');
         }
     </script>
     
